@@ -22,11 +22,11 @@
 
 #include "OpenGarage.h"
 
-ulong OpenGarage::echo_time;
 byte  OpenGarage::state = OG_STATE_INITIAL;
 File  OpenGarage::log_file;
 byte  OpenGarage::alarm = 0;
 byte  OpenGarage::led_reverse = 0;
+Ticker ud_ticker;
 
 static const char* config_fname = CONFIG_FNAME;
 static const char* log_fname = LOG_FNAME;
@@ -63,6 +63,45 @@ OptionStruct OpenGarage::options[] = {
   {"gwip", 0, 0, "-.-.-.-"},
   {"subn", 0, 0, "255.255.255.0"}
 };
+
+/* Variables and functions for handling Ultrasonic Distance sensor */
+#define KAVG 3  // k average
+volatile uint32_t ud_start = 0;
+volatile byte ud_i = 0;
+volatile uint32_t ud_buffer[KAVG];
+volatile boolean triggered = false;
+
+// start trigger signal
+void ud_start_trigger() {
+  digitalWrite(PIN_TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(PIN_TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(PIN_TRIG, LOW);
+  triggered = true;
+}
+
+ICACHE_RAM_ATTR void ud_isr() {
+  if(!triggered) return;
+
+  // ECHO pin went from low to high
+  if(digitalRead(PIN_ECHO)==HIGH) {
+    ud_start = micros();  // record start time
+  } else {
+    // ECHO pin went from high to low
+    triggered = false;
+    ud_buffer[ud_i] = micros() - ud_start; // calculate elapsed time
+    if(ud_buffer[ud_i]>26233L) ud_buffer[ud_i] = 26233L;  // clamp time value
+    ud_i = (ud_i+1)%KAVG; // circular buffer
+    if(ud_i) {  // we want to read KAVG times consecutively
+      ud_start_trigger();
+    }
+  }
+}
+
+void ud_ticker_cb() {
+  ud_start_trigger();
+}
     
 void OpenGarage::begin() {
   digitalWrite(PIN_RESET, HIGH);
@@ -100,7 +139,10 @@ void OpenGarage::begin() {
   if(!SPIFFS.begin()) {
     DEBUG_PRINTLN(F("failed to mount file system!"));
   }
-  
+
+  // setup ticker
+  ud_ticker.attach(3.0, ud_ticker_cb);
+  attachInterrupt(PIN_ECHO, ud_isr, CHANGE);
   // play a tune at startup
   //play_startup_tune();
 }
@@ -197,6 +239,7 @@ void OpenGarage::options_save() {
   file.close();
 }
 
+/*
 ulong OpenGarage::read_distance_once() {
   //TODO handle max value as handled error in the UI - check long distance for car detection
   digitalWrite(PIN_TRIG, LOW);
@@ -221,19 +264,22 @@ ulong OpenGarage::read_distance_once() {
   //DEBUG_PRINT(lapse);
   return lapse;
 }
+*/
 
 uint OpenGarage::read_distance() {
   byte i;
   unsigned long _time = 0;
   // do three readings in a roll to reduce noise
-  byte K = 3;
-  for(i=0;i<K;i++) {
-    _time += read_distance_once();
-    delay(50);
+  //byte K = 3;
+  noInterrupts(); // turn off interrupts while we read buffer
+  for(i=0;i<KAVG;i++) {
+    //_time += read_distance_once();
+    //delay(50);
+    _time += ud_buffer[i];
   }
-  _time /= K;
-  echo_time = _time;
-  return (uint)(echo_time*0.01716f);  // 34320 cm / 2 / 10^6 s
+  interrupts();
+  _time /= KAVG;
+  return (uint)(_time*0.01716f);  // 34320 cm / 2 / 10^6 s
 }
 
 bool OpenGarage::get_cloud_access_en() {

@@ -24,6 +24,7 @@ $(ESP_LIBS)/ESP8266WebServer \
 $(ESP_LIBS)/ESP8266HTTPClient \
 $(ESP_LIBS)/Blynk \
 $(ESP_LIBS)/pubsubclient \
+$(ESP_LIBS)/Ticker \
 .
 
 # Esp8266 Arduino git location

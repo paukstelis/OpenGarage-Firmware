@@ -26,6 +26,7 @@
 #include <Arduino.h>
 #include <FS.h>
 #include <ESP8266WiFi.h>
+#include <Ticker.h>
 #include "defines.h"
 
 struct OptionStruct {
@@ -86,7 +87,6 @@ public:
   }
   static void config_ip();
 private:
-  static ulong echo_time;
   static ulong read_distance_once();
   static File log_file;
   static void button_handler();

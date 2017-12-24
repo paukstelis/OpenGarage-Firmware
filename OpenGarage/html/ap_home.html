@@ -1,3 +1,7 @@
+<head>
+  <title>OpenGarage</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+</head>
 <body>
     <style> table, th, td {	border: 0px solid black;  border-collapse: collapse;}
     table#rd th { border: 1px solid black;}
@@ -11,7 +15,7 @@
     <table cellspacing=16>
     <tr><td><input type='text' name='ssid' id='ssid'></td><td>(SSID)</td></tr>
     <tr><td><input type='password' name='pass' id='pass'></td><td>(Password)</td></tr>
-    <tr><td><input type='text' name='auth' id='auth'></td><td><label id='lbl_auth'>(Auth Token)</label></td></tr>
+    <tr><td><input type='text' name='auth' id='auth'></td><td><label id='lbl_auth'>(Blynk Token, Optional)</label></td></tr>
     <tr><td colspan=2><p id='msg'></p></td></tr>
     <tr><td><button type='button' id='butt' onclick='sf();' style='height:36px;width:180px'>Submit</button></td><td></td></tr>
     </table>
@@ -49,13 +53,12 @@
     var comm='cc?ssid='+encodeURIComponent(id('ssid').value)+'&pass='+encodeURIComponent(id('pass').value)+'&auth='+id('auth').value;
     xhr.open('GET', comm, true); xhr.send();
     id('butt').innerHTML='Connecting...';
+    id('msg').innerHTML='<font color=gray>Connecting, please wait. If your phone/computer<br>does not automatically connect back to the OG AP,<br>please manually connect back to the OG AP in order<br>to complete WiFi setup.</font>';
     id('butt').disabled=true;id('ssid').disabled=true;id('pass').disabled=true;id('auth').disabled=true;
     }
     
     function loadSSIDs() {
       //Hide auth info to more clearly support multiple tools without breaking app
-      id('auth').hidden =true;
-      id('lbl_auth').hidden =true;
       var xhr=new XMLHttpRequest();
       xhr.onreadystatechange=function() {
         if(xhr.readyState==4 && xhr.status==200) {

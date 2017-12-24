@@ -625,6 +625,11 @@ void on_sta_update() {
   server_send_html(html);
 }
 
+void on_ap_update() {
+  String html = FPSTR(ap_update_html);
+  server_send_html(html);
+}
+
 void on_sta_upload_fin() {
 
   if(!verify_device_key()) {
@@ -643,6 +648,8 @@ void on_sta_upload_fin() {
   restart_timeout = millis() + 2000;
   og.state = OG_STATE_RESTART;
 }
+
+void on_ap_upload_fin() { on_sta_upload_fin(); }
 
 void on_sta_upload() {
   HTTPUpload& upload = server->upload();
@@ -674,11 +681,37 @@ void on_sta_upload() {
   delay(0);    
 }
 
+void on_ap_upload() {
+  HTTPUpload& upload = server->upload();
+  if(upload.status == UPLOAD_FILE_START){
+    Serial.println(F("prepare to upload: "));
+    Serial.println(upload.filename);
+    uint32_t maxSketchSpace = (ESP.getFreeSketchSpace()-0x1000)&0xFFFFF000;
+    if(!Update.begin(maxSketchSpace)) {
+      Serial.println(F("not enough space"));
+    }
+  } else if(upload.status == UPLOAD_FILE_WRITE) {
+    Serial.print(".");
+    if(Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+      Serial.println(F("size mismatch"));
+    }
+      
+  } else if(upload.status == UPLOAD_FILE_END) {
+    
+    Serial.println(F("upload completed"));
+       
+  } else if(upload.status == UPLOAD_FILE_ABORTED){
+    Update.end();
+    Serial.println(F("upload aborted"));
+  }
+  delay(0);    
+}
+
 void check_status_ap() {
   static ulong cs_timeout = 0;
   if(millis() > cs_timeout) {
-    DEBUG_PRINTLN(og.read_distance());
-    DEBUG_PRINTLN(OG_FWV);
+    Serial.println(og.read_distance());
+    Serial.println(OG_FWV);
     cs_timeout = millis() + 5000;
   }
 }
@@ -893,9 +926,9 @@ void check_status() {
     if(event == DOOR_STATUS_JUST_OPENED || event == DOOR_STATUS_JUST_CLOSED) {
       //Debug Beep (only if sound is enabled)
       if(og.options[OPTION_ALM].ival){
-        og.play_note(1000);
+        /*og.play_note(1000);
         delay(500);
-        og.play_note(0);
+        og.play_note(0);*/
       }
       DEBUG_PRINT(curr_utc_time);
       if(event == DOOR_STATUS_JUST_OPENED)  {	
@@ -957,7 +990,7 @@ void check_status() {
     if ((curr_utc_time >checkstatus_report_timeout) || (event == DOOR_STATUS_JUST_OPENED || event == DOOR_STATUS_JUST_CLOSED) ){
       DEBUG_PRINT(curr_utc_time);
       uint32_t ram = ESP.getFreeHeap();
-      Serial.printf(" RAM: %d ", ram);
+      //DEBUG_PRINTLN(" RAM: "+ram);
       if(event == DOOR_STATUS_REMAIN_OPEN)  {	
         DEBUG_PRINTLN(F(" Sending State Refresh to connected systems, value: OPEN")); }
       else if(event == DOOR_STATUS_REMAIN_CLOSED) {	
@@ -1073,6 +1106,8 @@ void do_loop() {
       server->on("/js", on_ap_scan);
       server->on("/cc", on_ap_change_config);
       server->on("/jt", on_ap_try_connect);
+      server->on("/update", HTTP_GET, on_ap_update);
+      server->on("/update", HTTP_POST, on_ap_upload_fin, on_ap_upload);      
       server->on("/resetall",on_reset_all);
       server->begin();
       DEBUG_PRINTLN(F("Web Server endpoints (AP mode) registered"));

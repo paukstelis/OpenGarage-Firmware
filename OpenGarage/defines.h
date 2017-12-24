@@ -141,13 +141,13 @@ typedef enum {
 //#define SERIAL_DEBUG
 #if defined(SERIAL_DEBUG)
 
-  #define DEBUG_BEGIN(x)   { delay(2000); Serial.begin(x); }
+  #define DEBUG_BEGIN(x)   { Serial.begin(x); }
   #define DEBUG_PRINT(x)   Serial.print(x)
   #define DEBUG_PRINTLN(x) Serial.println(x)
 
 #else
 
-  #define DEBUG_BEGIN(x)   {}
+  #define DEBUG_BEGIN(x)   { Serial.begin(x); }
   #define DEBUG_PRINT(x)   {}
   #define DEBUG_PRINTLN(x) {}
 

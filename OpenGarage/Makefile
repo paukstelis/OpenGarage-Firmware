@@ -27,7 +27,7 @@ $(ESP_LIBS)/pubsubclient \
 .
 
 # Esp8266 Arduino git location
-ESP_ROOT ?= $(HOME)/esp8266_2.2.0/
+ESP_ROOT ?= $(HOME)/esp8266/
 # Output directory
 BUILD_ROOT ?= /tmp/$(MAIN_NAME)
 

@@ -26,6 +26,7 @@ ulong OpenGarage::echo_time;
 byte  OpenGarage::state = OG_STATE_INITIAL;
 File  OpenGarage::log_file;
 byte  OpenGarage::alarm = 0;
+byte  OpenGarage::led_reverse = 0;
 
 static const char* config_fname = CONFIG_FNAME;
 static const char* log_fname = LOG_FNAME;
@@ -73,8 +74,18 @@ void OpenGarage::begin() {
   digitalWrite(PIN_RELAY, LOW);
   pinMode(PIN_RELAY, OUTPUT);
 
-  digitalWrite(PIN_LED, LOW);
+  // detect LED logic
+  pinMode(PIN_LED, INPUT);
+  delay(500);
+  if(digitalRead(PIN_LED)==HIGH) {
+    Serial.println("reverse logic");
+    led_reverse = 1;  // if no external LED connected, reverse logic
+  } else {
+    Serial.println("normal logic");
+  }
+
   pinMode(PIN_LED, OUTPUT);
+  set_led(LOW);
   
   digitalWrite(PIN_TRIG, HIGH);
   pinMode(PIN_TRIG, OUTPUT);
@@ -195,13 +206,15 @@ ulong OpenGarage::read_distance_once() {
   digitalWrite(PIN_TRIG, LOW);
   // wait till echo pin's rising edge
   unsigned long quit_time=micros()+26233L;
-  while((digitalRead(PIN_ECHO)==LOW)&& (micros()<quit_time));
-  {//Do nothing
+  while((digitalRead(PIN_ECHO)==LOW)&& (micros()<quit_time)) {
+    yield();
   };
   unsigned long start_time = micros();
   quit_time=start_time+26233L;
   //wait till echo pin's falling edge
-  while((digitalRead(PIN_ECHO)==HIGH) && (micros()<quit_time));
+  while((digitalRead(PIN_ECHO)==HIGH) && (micros()<quit_time)) {
+    yield();
+  }
   ulong lapse = micros() - start_time;
   if (lapse>26233L) lapse = 26233L;
   //DEBUG_PRINTLN(F("Distance issue, setting to low value"));

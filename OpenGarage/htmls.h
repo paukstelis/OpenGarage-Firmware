@@ -1,4 +1,8 @@
-const char ap_home_html[] PROGMEM = R"(<body>
+const char ap_home_html[] PROGMEM = R"(<head>
+<title>OpenGarage</title>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+</head>
+<body>
 <style> table, th, td {	border: 0px solid black;  border-collapse: collapse;}
 table#rd th { border: 1px solid black;}
 table#rd td {	border: 1px solid black; border-collapse: collapse;}</style>
@@ -11,7 +15,7 @@ table#rd td {	border: 1px solid black; border-collapse: collapse;}</style>
 <table cellspacing=16>
 <tr><td><input type='text' name='ssid' id='ssid'></td><td>(SSID)</td></tr>
 <tr><td><input type='password' name='pass' id='pass'></td><td>(Password)</td></tr>
-<tr><td><input type='text' name='auth' id='auth'></td><td><label id='lbl_auth'>(Auth Token)</label></td></tr>
+<tr><td><input type='text' name='auth' id='auth'></td><td><label id='lbl_auth'>(Blynk Token, Optional)</label></td></tr>
 <tr><td colspan=2><p id='msg'></p></td></tr>
 <tr><td><button type='button' id='butt' onclick='sf();' style='height:36px;width:180px'>Submit</button></td><td></td></tr>
 </table>
@@ -49,13 +53,12 @@ id('butt').disabled=false;id('ssid').disabled=false;id('pass').disabled=false;id
 var comm='cc?ssid='+encodeURIComponent(id('ssid').value)+'&pass='+encodeURIComponent(id('pass').value)+'&auth='+id('auth').value;
 xhr.open('GET', comm, true); xhr.send();
 id('butt').innerHTML='Connecting...';
+id('msg').innerHTML='<font color=gray>Connecting, please wait. If your phone/computer<br>does not automatically connect back to the OG AP,<br>please manually connect back to the OG AP in order<br>to complete WiFi setup.</font>';
 id('butt').disabled=true;id('ssid').disabled=true;id('pass').disabled=true;id('auth').disabled=true;
 }
 
 function loadSSIDs() {
 //Hide auth info to more clearly support multiple tools without breaking app
-id('auth').hidden =true;
-id('lbl_auth').hidden =true;
 var xhr=new XMLHttpRequest();
 xhr.onreadystatechange=function() {
 if(xhr.readyState==4 && xhr.status==200) {
@@ -73,6 +76,62 @@ row.innerHTML ="<tr><td><input name='ssids' id='rd"+i+"' onclick='sel(" + i + ")
 xhr.open('GET','js',true); xhr.send();
 }
 setTimeout(loadSSIDs, 1000);
+</script>
+</body>
+)";
+const char ap_update_html[] PROGMEM = R"(<head>
+<title>OpenGarage</title>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+</head>
+<body>
+<div id='page_update'>
+<div><h3>OpenGarage AP-mode Firmware Update</h3></div>
+<div>
+<form method='POST' action='/update' id='fm' enctype='multipart/form-data'>
+<table cellspacing=4>
+<tr><td><input type='file' name='file' accept='.bin' id='file'></td></tr>
+<tr><td><b>Device key: </b><input type='password' name='dkey' size=16 maxlength=16 id='dkey'></td></tr>
+<tr><td><label id='msg'></label></td></tr>
+</table>
+<button id='btn_submit' style='height:48px;'>Submit</a>
+</form>
+</div>
+</div>
+<script>
+function id(s) {return document.getElementById(s);}
+function clear_msg() {id('msg').innerHTML='';}
+function show_msg(s,t,c) {
+id('msg').innerHTML=s.fontcolor(c);
+if(t>0) setTimeout(clear_msg, t);
+}
+id('btn_submit').addEventListener('click', function(e){
+e.preventDefault();
+var files= id('file').files;
+if(files.length==0) {show_msg('Please select a file.',2000,'red'); return;}
+if(id('dkey').value=='') {
+if(!confirm('You did not input a device key. Are you sure?')) return;
+}
+show_msg('Uploading. Please wait...',10000,'green');
+var fd = new FormData();
+var file = files[0];
+fd.append('file', file, file.name);
+fd.append('dkey', id('dkey').value);
+var xhr = new XMLHttpRequest();
+xhr.onreadystatechange = function() {
+if(xhr.readyState==4 && xhr.status==200) {
+var jd=JSON.parse(xhr.responseText);
+if(jd.result==1) {
+show_msg('Update is successful. Rebooting. Please wait...',0,'green');
+} else if (jd.result==2) {
+show_msg('Check device key and try again.', 10000, 'red');
+} else {
+show_msg('Update failed.',0,'red');
+}
+}
+};
+xhr.open('POST', 'update', true);
+xhr.send(fd);
+});
 </script>
 </body>
 )";
@@ -144,7 +203,6 @@ $('#msg').html('Device is now in AP mode. Log on<br>to SSID OG_xxxxxx, then <br>
 }
 });  
 $('#btn_click').click(function(e) {
-show_msg('Sending command to OpenGarage..',5000,'green');
 var comm = 'cc?click=1&dkey='+($('#dkey').val());
 $.getJSON(comm)
 .done(function( jd ) {
@@ -316,14 +374,6 @@ border-collapse: collapse;
 <tr><td><b>Device IP:</b></td><td><input type='text' size=15 maxlength=15 id='dvip' data-mini='true' disabled></td></tr>
 <tr><td><b>Gateway IP:</b></td><td><input type='text' size=15 maxlength=15 id='gwip' data-mini='true' disabled></td></tr>
 <tr><td><b>Subnet:</b></td><td><input type='text' size=15 maxlength=15 id='subn' data-mini='true' disabled></td></tr> 
-<tr><td><b>Pin 4 - Ext:</b></td><td>
-<select name='Ext Pin 4' id='Ep4' data-mini='true'>
-<option value=0>Disabled</option>
-<option value=1>US Vehicle A</option>
-<option value=2>US Door/Vehicle B</option>
-<option value=3>Switch - B</option>
-<option value=4>Temp Humidity (DHT11)</option>
-</select></td></tr> 
 <tr><td colspan=2><input type='checkbox' id='cb_key' data-mini='true'><label for='cb_key'>Change Device Key</label></td></tr>
 <tr><td><b>New Key:</b></td><td><input type='password' size=24 maxlength=32 id='nkey' data-mini='true' disabled></td></tr>
 <tr><td><b>Confirm:</b></td><td><input type='password' size=24 maxlength=32 id='ckey' data-mini='true' disabled></td></tr>      

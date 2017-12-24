@@ -46,6 +46,7 @@ public:
   static OptionStruct options[];
   static byte state;
   static byte alarm;
+  static byte led_reverse;
   static void begin();
   static void options_setup();
   static void options_load();
@@ -56,10 +57,10 @@ public:
   static byte get_mode()   { return options[OPTION_MOD].ival; }
   static byte get_button() { return digitalRead(PIN_BUTTON); }
   static byte get_switch() { return digitalRead(PIN_SWITCH); }
-  static byte get_led()    { return digitalRead(PIN_LED); }
+  static byte get_led()    { return led_reverse?(!digitalRead(PIN_LED)):digitalRead(PIN_LED); }
   static bool get_cloud_access_en();
   static bool get_local_access_en();
-  static void set_led(byte status)   { digitalWrite(PIN_LED, status); }
+  static void set_led(byte status)   { digitalWrite(PIN_LED, led_reverse?(!status):status); }
   static void set_relay(byte status) { digitalWrite(PIN_RELAY, status); }
   static void click_relay() {
     set_relay(HIGH);

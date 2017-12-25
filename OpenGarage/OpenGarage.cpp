@@ -141,7 +141,7 @@ void OpenGarage::begin() {
   }
 
   // setup ticker
-  ud_ticker.attach(3.0, ud_ticker_cb);
+  ud_ticker.attach_ms(3000, ud_ticker_cb);
   attachInterrupt(PIN_ECHO, ud_isr, CHANGE);
   // play a tune at startup
   //play_startup_tune();

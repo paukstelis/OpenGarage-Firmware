@@ -77,7 +77,6 @@
 #define OG_STATE_CONNECTED      2
 #define OG_STATE_TRY_CONNECT    3
 #define OG_STATE_RESET          9
-#define OG_STATE_RESTART        10
 
 #define BLYNK_PIN_LED   V0
 #define BLYNK_PIN_RELAY V1
@@ -127,10 +126,12 @@ typedef enum {
   NUM_OPTIONS     // number of options
 } OG_OPTION_enum;
 
+// if button is pressed for 2 seconds, report IP
+#define BUTTON_REPORTIP_TIMEOUT 1500
 // if button is pressed for at least 5 seconds, reset to AP mode
-#define BUTTON_APRESET_TIMEOUT 4000
+#define BUTTON_APRESET_TIMEOUT 4500
 // if button is pressed for at least 10 seconds, factory reset
-#define BUTTON_FACRESET_TIMEOUT  8000
+#define BUTTON_FACRESET_TIMEOUT  9500
 
 #define LED_FAST_BLINK 100
 #define LED_SLOW_BLINK 500

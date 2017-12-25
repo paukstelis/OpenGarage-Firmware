@@ -83,7 +83,7 @@ public:
   static void reset_to_ap() {
     options[OPTION_MOD].ival = OG_MOD_AP;
     options_save();
-    state = OG_STATE_RESTART;
+    restart();
   }
   static void config_ip();
 private:

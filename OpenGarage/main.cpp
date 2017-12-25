@@ -25,10 +25,12 @@
   #define BLYNK_PRINT Serial
 #endif
 
-#include "OpenGarage.h"
-#include "espconnect.h"
 #include <BlynkSimpleEsp8266.h>
 #include <PubSubClient.h> //https://github.com/Imroy/pubsubclient
+
+#include "pitches.h"
+#include "OpenGarage.h"
+#include "espconnect.h"
 //Change Timeout to 25 in header file
 
 OpenGarage og;
@@ -36,6 +38,11 @@ ESP8266WebServer *server = NULL;
 
 WidgetLED blynk_led(BLYNK_PIN_LED);
 WidgetLCD blynk_lcd(BLYNK_PIN_LCD);
+
+static Ticker led_ticker;
+static Ticker aux_ticker;
+static Ticker ip_ticker;
+static Ticker restart_ticker;
 
 static WiFiClient wificlient;
 PubSubClient mqttclient(wificlient);
@@ -49,7 +56,6 @@ static int vehicle_status = 0; //0 No, 1 Yes, 2 Unknown (door open), 3 Option Di
 static bool curr_cloud_access_en = false;
 static bool curr_local_access_en = false;
 static uint led_blink_ms = LED_FAST_BLINK;
-static ulong restart_timeout = 0;
 static ulong justopen_timestamp = 0;
 static byte curr_mode;
 // this is one byte storing the door status histogram
@@ -103,6 +109,46 @@ bool get_value_by_key(const char* key, String& val) {
     return true;
   } else {
     return false;
+  }
+}
+
+String ipString;
+
+void report_ip() {
+  static uint notes[] = {NOTE_C4, NOTE_CS4, NOTE_D4, NOTE_DS4, NOTE_E4, NOTE_F4, NOTE_FS4, NOTE_G4, NOTE_GS4, NOTE_A4};
+  static byte note = 0;
+  static byte digit = 0;
+
+  if(digit == ipString.length()) { // play ending note
+    og.play_note(NOTE_C6); digit++; note=0;
+    ip_ticker.once_ms(1000, report_ip);
+    return;
+  } else if(digit == ipString.length()+1) { // end
+    og.play_note(0); note=0; digit=0;
+    return;
+  }
+  char c = ipString.charAt(digit);
+  if (c==' ') {
+    og.play_note(0); digit++; note=0;
+    ip_ticker.once_ms(1000, report_ip);
+  } else if (c=='.') {
+    og.play_note(NOTE_C5);
+    digit++; note=0;
+    ip_ticker.once_ms(500, report_ip);
+  } else if (c>='0' && c<='9') {
+    byte idx=9; // '0' maps to index 9;
+    if(c>='1') idx=c-'1';
+    if(note==idx+1) {
+      og.play_note(0); note++;
+      ip_ticker.once_ms(1000, report_ip);
+    } else if(note==idx+2) {
+      digit++; note=0;
+      ip_ticker.once_ms(100, report_ip);
+    } else {
+      og.play_note(notes[note]);
+      note++;
+      ip_ticker.once_ms(500, report_ip);
+    }
   }
 }
 
@@ -290,8 +336,7 @@ void on_sta_change_controller() {
     }
   } else if(server->hasArg("reboot")) {
     server_send_result(HTML_SUCCESS);
-    restart_timeout = millis() + 1000;
-    og.state = OG_STATE_RESTART;
+    restart_ticker.once_ms(1000, og.restart);
   } else if(server->hasArg("apmode")) {
     server_send_result(HTML_SUCCESS);
     og.reset_to_ap();
@@ -488,8 +533,7 @@ void on_ap_try_connect() {
       og.options[OPTION_ACC].ival = OG_ACC_BOTH;
     }
     og.options_save();  
-    restart_timeout = millis() + 2000;
-    og.state = OG_STATE_RESTART;
+    restart_ticker.once_ms(1000, og.restart);
   }else {DEBUG_PRINTLN(F("Attemped STA connect but failed"));}
 }
 
@@ -587,6 +631,11 @@ void process_ui()
         og.state = OG_STATE_RESET;
       } else if(curr > button_down_time + BUTTON_APRESET_TIMEOUT) {
         og.reset_to_ap();
+      } else if(curr > button_down_time + BUTTON_REPORTIP_TIMEOUT) {        
+        // report IP
+        ipString = get_ip();
+        ipString.replace(".", ". ");
+        report_ip();
       } else if(curr > button_down_time + 50) {
         og.click_relay();
       }
@@ -645,8 +694,7 @@ void on_sta_upload_fin() {
   }
   
   server_send_result(HTML_SUCCESS);
-  restart_timeout = millis() + 2000;
-  og.state = OG_STATE_RESTART;
+  restart_ticker.once_ms(1000, og.restart);
 }
 
 void on_ap_upload_fin() { on_sta_upload_fin(); }
@@ -865,6 +913,7 @@ void check_status() {
   static ulong checkstatus_report_timeout = 0; 
   if((curr_utc_time > checkstatus_timeout) || (checkstatus_timeout == 0))  { //also check on first boot
     og.set_led(HIGH);
+    aux_ticker.once_ms(100, og.set_led, (byte)LOW);
     uint threshold = og.options[OPTION_DTH].ival;
     uint vthreshold = og.options[OPTION_VTH].ival;
     if ((og.options[OPTION_MNT].ival == OG_MNT_SIDE) || (og.options[OPTION_MNT].ival == OG_MNT_CEILING)){
@@ -907,7 +956,6 @@ void check_status() {
         distance = threshold + 20;
       }
     }
-    og.set_led(LOW);
     read_cnt = (read_cnt+1)%100;
     if (checkstatus_timeout == 0){
       DEBUG_PRINTLN(F("First time checking status don't trigger a status change, set full history to current value"));
@@ -1187,7 +1235,7 @@ void do_loop() {
     }
     break;
       
-  case OG_STATE_RESTART:
+  /*case OG_STATE_RESTART:
     if(curr_local_access_en)
       server->handleClient();
     if(millis() > restart_timeout) {
@@ -1196,13 +1244,12 @@ void do_loop() {
       og.restart();
     }
     break;
-    
+  */
   case OG_STATE_RESET:
     og.state = OG_STATE_INITIAL;
     og.options_reset();
     og.log_reset();
-    restart_timeout = millis();
-    og.state = OG_STATE_RESTART;
+    og.restart();
     break;
   
   case OG_STATE_CONNECTED: //THIS IS THE MAIN LOOP

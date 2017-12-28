@@ -126,8 +126,8 @@ typedef enum {
   NUM_OPTIONS     // number of options
 } OG_OPTION_enum;
 
-// if button is pressed for 2 seconds, report IP
-#define BUTTON_REPORTIP_TIMEOUT 1500
+// if button is pressed for 1 seconds, report IP
+#define BUTTON_REPORTIP_TIMEOUT 800
 // if button is pressed for at least 5 seconds, reset to AP mode
 #define BUTTON_APRESET_TIMEOUT 4500
 // if button is pressed for at least 10 seconds, factory reset

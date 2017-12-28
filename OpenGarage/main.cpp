@@ -31,7 +31,6 @@
 #include "pitches.h"
 #include "OpenGarage.h"
 #include "espconnect.h"
-//Change Timeout to 25 in header file
 
 OpenGarage og;
 ESP8266WebServer *server = NULL;
@@ -760,7 +759,7 @@ void check_status_ap() {
   if(millis() > cs_timeout) {
     Serial.println(og.read_distance());
     Serial.println(OG_FWV);
-    cs_timeout = millis() + 5000;
+    cs_timeout = millis() + 2000;
   }
 }
 
@@ -1161,6 +1160,7 @@ void do_loop() {
       DEBUG_PRINTLN(F("Web Server endpoints (AP mode) registered"));
       og.state = OG_STATE_CONNECTED;
       DEBUG_PRINTLN(WiFi.softAPIP());
+      connecting_timeout = 0;
     } else {
       led_blink_ms = LED_SLOW_BLINK;
       DEBUG_PRINT(F("Attempting to connect to SSID: "));
@@ -1226,11 +1226,11 @@ void do_loop() {
       led_blink_ms = 0;
       og.set_led(LOW);
       og.state = OG_STATE_CONNECTED;
-
+      connecting_timeout = 0;
     } else {
       if(millis() > connecting_timeout) {
-        og.state = OG_STATE_INITIAL;
-        DEBUG_PRINTLN(F("Wifi Connecting timeout"));
+        DEBUG_PRINTLN(F("Wifi Connecting timeout, restart"));
+        og.restart();
       }
     }
     break;
@@ -1256,6 +1256,7 @@ void do_loop() {
     if(curr_mode == OG_MOD_AP) {
       server->handleClient();
       check_status_ap();
+      connecting_timeout = 0;
     } else {
       if(WiFi.status() == WL_CONNECTED) {
         time_keeping();
@@ -1271,9 +1272,17 @@ void do_loop() {
           }
           else {mqttclient.loop();} //Processes MQTT Pings/keep alives
         }
+        connecting_timeout = 0;
       } else {
-        DEBUG_PRINTLN(F("State is CONNECTED but Wifi has no IP"));
-        og.state = OG_STATE_INITIAL;
+        //og.state = OG_STATE_INITIAL;
+        if(!connecting_timeout) {
+          DEBUG_PRINTLN(F("State is CONNECTED but WiFi is disconnected, start timeout counter."));
+          connecting_timeout = millis()+60000;
+        }
+        else if(millis() > connecting_timeout) {
+          DEBUG_PRINTLN(F("timeout reached, reboot"));
+          og.restart();
+        }
       }
     }
     break;

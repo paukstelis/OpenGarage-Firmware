@@ -60,7 +60,6 @@ public:
   static byte get_switch() { return digitalRead(PIN_SWITCH); }
   static byte get_led()    { return led_reverse?(!digitalRead(PIN_LED)):digitalRead(PIN_LED); }
   static bool get_cloud_access_en();
-  static bool get_local_access_en();
   static void set_led(byte status)   { digitalWrite(PIN_LED, led_reverse?(!status):status); }
   static void set_relay(byte status) { digitalWrite(PIN_RELAY, status); }
   static void click_relay() {
@@ -86,12 +85,13 @@ public:
     restart();
   }
   static void config_ip();
+  static void play_startup_tune();
 private:
   static ulong read_distance_once();
   static File log_file;
   static void button_handler();
   static void led_handler();
-  static void play_startup_tune();
+
 };
 
 #endif  // _OPENGARAGE_H_

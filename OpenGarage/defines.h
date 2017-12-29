@@ -45,10 +45,6 @@
 // Log file name
 #define LOG_FNAME       "/log.dat"
 
-#define OG_ACC_LOCAL    0x00
-#define OG_ACC_BOTH     0x01
-#define OG_ACC_CLOUD    0x02
-
 #define OG_MNT_CEILING  0x00
 #define OG_MNT_SIDE     0x01
 #define OG_SWITCH_LOW   0x02
@@ -76,6 +72,7 @@
 #define OG_STATE_CONNECTING     1
 #define OG_STATE_CONNECTED      2
 #define OG_STATE_TRY_CONNECT    3
+#define OG_STATE_WAIT_RESTART   4
 #define OG_STATE_RESET          9
 
 #define BLYNK_PIN_LED   V0
@@ -98,7 +95,6 @@
 
 typedef enum {
   OPTION_FWV = 0, // firmware version
-  OPTION_ACC,     // accessbility
   OPTION_MNT,     // mount type
   OPTION_DTH,     // distance threshold door
   OPTION_VTH,     // distance threshold vehicle detection

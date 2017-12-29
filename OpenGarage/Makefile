@@ -20,6 +20,7 @@ SKETCH ?= ./examples/ogMainArduino/ogMainArduino.ino
 LIBS ?= $(ESP_LIBS)/Wire \
 $(ESP_LIBS)/ESP8266WiFi \
 $(ESP_LIBS)/ESP8266mDNS \
+$(ESP_LIBS)/DNSServer \
 $(ESP_LIBS)/ESP8266WebServer \
 $(ESP_LIBS)/ESP8266HTTPClient \
 $(ESP_LIBS)/Blynk \

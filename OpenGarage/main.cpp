@@ -26,6 +26,7 @@
 #endif
 
 #include <BlynkSimpleEsp8266.h>
+#include <DNSServer.h>
 #include <PubSubClient.h> //https://github.com/Imroy/pubsubclient
 
 #include "pitches.h"
@@ -34,6 +35,7 @@
 
 OpenGarage og;
 ESP8266WebServer *server = NULL;
+DNSServer *dns = NULL;
 
 WidgetLED blynk_led(BLYNK_PIN_LED);
 WidgetLCD blynk_lcd(BLYNK_PIN_LCD);
@@ -53,7 +55,6 @@ static uint vdistance = 0;
 static byte door_status = 0; //0 down, 1 up
 static int vehicle_status = 0; //0 No, 1 Yes, 2 Unknown (door open), 3 Option Disabled
 static bool curr_cloud_access_en = false;
-static bool curr_local_access_en = false;
 static uint led_blink_ms = LED_FAST_BLINK;
 static ulong justopen_timestamp = 0;
 static byte curr_mode;
@@ -151,11 +152,20 @@ void report_ip() {
   }
 }
 
+void restart_in(uint32_t ms) {
+  if(og.state != OG_STATE_WAIT_RESTART) {
+    og.state = OG_STATE_WAIT_RESTART;
+    DEBUG_PRINTLN(F("Prepare to restart..."));
+    restart_ticker.once_ms(ms, og.restart);
+  }
+}
+
 void on_home()
 {
   String html = "";
   
   if(curr_mode == OG_MOD_AP) {
+
     html = FPSTR(ap_home_html);
   } else {
     html = FPSTR(sta_home_html);
@@ -335,7 +345,8 @@ void on_sta_change_controller() {
     }
   } else if(server->hasArg("reboot")) {
     server_send_result(HTML_SUCCESS);
-    restart_ticker.once_ms(1000, og.restart);
+    //restart_ticker.once_ms(1000, og.restart);
+    restart_in(1000);
   } else if(server->hasArg("apmode")) {
     server_send_result(HTML_SUCCESS);
     og.reset_to_ap();
@@ -513,6 +524,7 @@ void on_ap_change_config() {
     og.options_save();
     server_send_result(HTML_SUCCESS);
     og.state = OG_STATE_TRY_CONNECT;
+
   } else {
     server_send_result(HTML_DATA_MISSING, "ssid");
   }
@@ -526,14 +538,16 @@ void on_ap_try_connect() {
   html += F("}");
   server_send_html(html);
   if(WiFi.status() == WL_CONNECTED && WiFi.localIP()) {
-    DEBUG_PRINTLN(F("STA connected, updating option file"));
+    /*DEBUG_PRINTLN(F("STA connected, updating option file"));
     og.options[OPTION_MOD].ival = OG_MOD_STA;
     if(og.options[OPTION_AUTH].sval.length() == 32) {
       og.options[OPTION_ACC].ival = OG_ACC_BOTH;
     }
-    og.options_save();  
-    restart_ticker.once_ms(1000, og.restart);
-  }else {DEBUG_PRINTLN(F("Attemped STA connect but failed"));}
+    og.options_save();*/
+    DEBUG_PRINTLN(F("IP received by client, restart."));
+    //restart_ticker.once_ms(1000, og.restart); // restart once client receives IP address
+    restart_in(1000);
+  }
 }
 
 // MQTT callback to read "Button" requests
@@ -594,10 +608,10 @@ void do_setup()
   DEBUG_PRINT(F(" "));
   DEBUG_PRINTLN(F(__TIME__));
   curr_cloud_access_en = og.get_cloud_access_en();
-  curr_local_access_en = og.get_local_access_en();
   curr_mode = og.get_mode();
   if(!server) {
     server = new ESP8266WebServer(og.options[OPTION_HTP].ival);
+    if(curr_mode == OG_MOD_AP) dns = new DNSServer();
     DEBUG_PRINT(F("server started @ "));
     DEBUG_PRINTLN(og.options[OPTION_HTP].ival);
   }
@@ -693,7 +707,8 @@ void on_sta_upload_fin() {
   }
   
   server_send_result(HTML_SUCCESS);
-  restart_ticker.once_ms(1000, og.restart);
+  //restart_ticker.once_ms(1000, og.restart);
+  restart_in(1000);
 }
 
 void on_ap_upload_fin() { on_sta_upload_fin(); }
@@ -1149,6 +1164,9 @@ void do_loop() {
       scanned_ssids = scan_network();
       String ap_ssid = get_ap_ssid();
       start_network_ap(ap_ssid.c_str(), NULL);
+      delay(500);
+      dns->setErrorReplyCode(DNSReplyCode::NoError);
+      dns->start(53, "*", WiFi.softAPIP());
       server->on("/",   on_home);    
       server->on("/js", on_ap_scan);
       server->on("/cc", on_ap_change_config);
@@ -1156,6 +1174,7 @@ void do_loop() {
       server->on("/update", HTTP_GET, on_ap_update);
       server->on("/update", HTTP_POST, on_ap_upload_fin, on_ap_upload);      
       server->on("/resetall",on_reset_all);
+      server->onNotFound(on_home);
       server->begin();
       DEBUG_PRINTLN(F("Web Server endpoints (AP mode) registered"));
       og.state = OG_STATE_CONNECTED;
@@ -1186,34 +1205,33 @@ void do_loop() {
       DEBUG_PRINT(F("Wireless connected, IP: "));
       DEBUG_PRINTLN(WiFi.localIP());
 
-      if(curr_local_access_en) {
-        // use ap ssid as mdns name
-        if(MDNS.begin(get_ap_ssid().c_str())) {
-          DEBUG_PRINTLN(F("MDNS registered"));
-        }
-        server->on("/", on_home);
-        server->on("/jc", on_sta_controller);
-        server->on("/jo", on_sta_options);
-        server->on("/jl", on_sta_logs);
-        server->on("/vo", on_sta_view_options);
-        //server->serveStatic("/sta_options.html", SPIFFS, "/sta_options.html");
-        server->on("/vl", on_sta_view_logs);
-        server->on("/cc", on_sta_change_controller);
-        server->on("/co", on_sta_change_options);
-        server->on("/db", on_sta_debug);
-        server->on("/update", HTTP_GET, on_sta_update);
-        server->on("/update", HTTP_POST, on_sta_upload_fin, on_sta_upload);
-        server->on("/clearlog", on_clear_log);
-        /*server->serveStatic("/DoorOpen.png", SPIFFS, "/DoorOpen.png","max-age=86400");
-        server->serveStatic("/DoorShut.png", SPIFFS, "/DoorShut.png","max-age=86400");
-        server->serveStatic("/ClosedAbsent.png", SPIFFS, "/ClosedAbsent.png","max-age=86400");
-        server->serveStatic("/ClosedPresent.png", SPIFFS, "/ClosedPresent.png","max-age=86400");
-        server->serveStatic("/Open.png", SPIFFS, "/Open.png","max-age=86400");*/
-        server->on("/resetall",on_reset_all);
-        //server->on("/test",on_test);
-        server->begin();
-        DEBUG_PRINTLN(F("Web Server endpoints (STA mode) registered"));
+      // use ap ssid as mdns name
+      if(MDNS.begin(get_ap_ssid().c_str())) {
+        DEBUG_PRINTLN(F("MDNS registered"));
       }
+      server->on("/", on_home);
+      server->on("/jc", on_sta_controller);
+      server->on("/jo", on_sta_options);
+      server->on("/jl", on_sta_logs);
+      server->on("/vo", on_sta_view_options);
+      //server->serveStatic("/sta_options.html", SPIFFS, "/sta_options.html");
+      server->on("/vl", on_sta_view_logs);
+      server->on("/cc", on_sta_change_controller);
+      server->on("/co", on_sta_change_options);
+      server->on("/db", on_sta_debug);
+      server->on("/update", HTTP_GET, on_sta_update);
+      server->on("/update", HTTP_POST, on_sta_upload_fin, on_sta_upload);
+      server->on("/clearlog", on_clear_log);
+      /*server->serveStatic("/DoorOpen.png", SPIFFS, "/DoorOpen.png","max-age=86400");
+      server->serveStatic("/DoorShut.png", SPIFFS, "/DoorShut.png","max-age=86400");
+      server->serveStatic("/ClosedAbsent.png", SPIFFS, "/ClosedAbsent.png","max-age=86400");
+      server->serveStatic("/ClosedPresent.png", SPIFFS, "/ClosedPresent.png","max-age=86400");
+      server->serveStatic("/Open.png", SPIFFS, "/Open.png","max-age=86400");*/
+      server->on("/resetall",on_reset_all);
+      //server->on("/test",on_test);
+      server->begin();
+      DEBUG_PRINTLN(F("Web Server endpoints (STA mode) registered"));
+
       if(curr_cloud_access_en) {
         Blynk.config(og.options[OPTION_AUTH].sval.c_str()); // use the config function
         Blynk.connect();
@@ -1234,6 +1252,14 @@ void do_loop() {
       }
     }
     break;
+
+  case OG_STATE_RESET:
+    og.state = OG_STATE_INITIAL;
+    og.options_reset();
+    og.log_reset();
+    og.restart();
+    break;
+    
       
   /*case OG_STATE_RESTART:
     if(curr_local_access_en)
@@ -1245,24 +1271,37 @@ void do_loop() {
     }
     break;
   */
-  case OG_STATE_RESET:
-    og.state = OG_STATE_INITIAL;
-    og.options_reset();
-    og.log_reset();
-    og.restart();
+      
+  case OG_STATE_WAIT_RESTART:
+    if(dns) dns->processNextRequest();  
+    if(server) server->handleClient();    
     break;
-  
+    
   case OG_STATE_CONNECTED: //THIS IS THE MAIN LOOP
     if(curr_mode == OG_MOD_AP) {
+      dns->processNextRequest();
       server->handleClient();
       check_status_ap();
       connecting_timeout = 0;
+      if(og.options[OPTION_MOD].ival == OG_MOD_STA) {
+        // already in STA mode, waiting to reboot
+        break;
+      }
+      if(WiFi.status() == WL_CONNECTED && WiFi.localIP()) {
+        DEBUG_PRINTLN(F("STA connected, updating option file"));
+        og.options[OPTION_MOD].ival = OG_MOD_STA;
+        og.options_save();
+        og.play_startup_tune();
+        //restart_ticker.once_ms(10000, og.restart);
+        restart_in(10000);
+      }
+      
     } else {
       if(WiFi.status() == WL_CONNECTED) {
         time_keeping();
         check_status(); //This checks the door, sends info to services and processes the automation rules
-        if(curr_local_access_en)
-          server->handleClient();
+        server->handleClient();
+
         if(curr_cloud_access_en)
           Blynk.run();
         //Handle MQTT

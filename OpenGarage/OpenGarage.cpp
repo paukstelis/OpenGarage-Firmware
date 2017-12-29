@@ -37,7 +37,6 @@ static const char* log_fname = LOG_FNAME;
  */
 OptionStruct OpenGarage::options[] = {
   {"fwv", OG_FWV,      255, ""},
-  {"acc", OG_ACC_LOCAL,  2, ""},
   {"mnt", OG_MNT_CEILING,3, ""},
   {"dth", 50,        65535, ""},
   {"vth", 150,       65535, ""},
@@ -117,10 +116,8 @@ void OpenGarage::begin() {
   pinMode(PIN_LED, INPUT);
   delay(500);
   if(digitalRead(PIN_LED)==HIGH) {
-    Serial.println("reverse logic");
     led_reverse = 1;  // if no external LED connected, reverse logic
   } else {
-    Serial.println("normal logic");
   }
 
   pinMode(PIN_LED, OUTPUT);
@@ -283,19 +280,9 @@ uint OpenGarage::read_distance() {
 }
 
 bool OpenGarage::get_cloud_access_en() {
-  if(options[OPTION_ACC].ival == OG_ACC_CLOUD ||
-     options[OPTION_ACC].ival == OG_ACC_BOTH) {
-    if(options[OPTION_AUTH].sval.length()==32) {
-      return true;
-    }
+  if(options[OPTION_AUTH].sval.length()==32) {
+    return true;
   }
-  return false;
-}
-
-bool OpenGarage::get_local_access_en() {
-  if(options[OPTION_ACC].ival == OG_ACC_LOCAL ||
-     options[OPTION_ACC].ival == OG_ACC_BOTH)
-     return true;
   return false;
 }
 

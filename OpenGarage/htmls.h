@@ -13,8 +13,8 @@ table#rd td {	border: 1px solid black; border-collapse: collapse;}</style>
 </table>
 <br><br>
 <table cellspacing=16>
-<tr><td><input type='text' name='ssid' id='ssid' style='font-size:14pt;height:28px;'></td><td>(SSID)</td></tr>
-<tr><td><input type='password' name='pass' id='pass' style='font-size:14pt;height:28px;'></td><td>(Password)</td></tr>
+<tr><td><input type='text' name='ssid' id='ssid' style='font-size:14pt;height:28px;'></td><td>(Your WiFi SSID)</td></tr>
+<tr><td><input type='password' name='pass' id='pass' style='font-size:14pt;height:28px;'></td><td>(Your WiFi Password)</td></tr>
 <tr><td><input type='text' name='auth' id='auth' style='font-size:14pt;height:28px;'></td><td><label id='lbl_auth'>(Blynk Token, Optional)</label></td></tr>
 <tr><td colspan=2><p id='msg'></p></td></tr>
 <tr><td><button type='button' id='butt' onclick='sf();' style='height:36px;width:180px'>Submit</button></td><td></td></tr>
@@ -36,7 +36,7 @@ id('butt').onclick=function rd(){window.open('http://'+ip);}
 clearInterval(tci);
 }
 }    
-xhr.open('GET', 'jt', true); xhr.send();    
+xhr.open('GET', 'jt', true); xhr.send();
 }  
 function sf() {
 id('msg').innerHTML='';
@@ -336,12 +336,6 @@ border-collapse: collapse;
 </div>
 <div id='div_cloud' style='display:none;'>
 <table cellpadding=1>
-<tr><td><b>Accessibility:</b></td><td>
-<select name='acc' id='acc' data-mini='true'>
-<option value=0>Direct IP Only</option>
-<option value=1>Direct IP + Cloud</option>                  
-<option value=2>Cloud Only</option>
-</select></td></tr>      
 <tr><td><b>Blynk Token:<a href='#BlynkInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Setup info</a><div data-role='popup' id='BlynkInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>Blynk provides remote access and monitoring. Install the app and use this QR to configure <a href='https://github.com/OpenGarage/OpenGarage-Firmware/blob/master/OGBlynkApp/og_blynk_1.0.png' target='_blank'>Blynk QR</a></p></div></b></td><td><input type='text' size=20 maxlength=32 id='auth' data-mini='true' value='-'></td></tr>
 <tr><td><b>IFTTT Key:<a href='#ifttInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='ifttInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p><a href='https://ifttt.com' target='_blank'>IFTTT</a> provides additional notification options (e.g. SMS, email) besides Blynk.</p></div></b></td><td><input type='text' size=20 maxlength=64 id='iftt' data-mini='true' value='-'></td></tr>
 <tr><td><b>MQTT Server:<a href='#mqttInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='mqttInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>MQTT provides additional workflow options through tools like NodeRed (e.g. SMS, email).</p></div></b></td><td><input type='text' size=16 maxlength=20 id='mqtt' data-mini='true' value=''></td></tr>
@@ -424,7 +418,6 @@ $('#btn_submit').click(function(e){
 e.preventDefault();
 if(confirm('Submit changes?')) {
 var comm='co?dkey='+encodeURIComponent($('#dkey').val());
-comm+='&acc='+$('#acc').val();
 comm+='&mnt='+$('#mnt').val();
 comm+='&dth='+$('#dth').val();
 comm+='&vth='+$('#vth').val();
@@ -473,7 +466,6 @@ setTimeout(goback, 4000);
 $(document).ready(function() {
 $.getJSON('jo', function(jd) {
 $('#fwv').text('v'+(jd.fwv/100>>0)+'.'+(jd.fwv/10%10>>0)+'.'+(jd.fwv%10>>0));
-$('#acc').val(jd.acc).selectmenu('refresh');
 $('#alm').val(jd.alm).selectmenu('refresh');
 $('#mnt').val(jd.mnt).selectmenu('refresh');
 if(jd.mnt>1) $('#dth').textinput('disable'); 

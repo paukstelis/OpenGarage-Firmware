@@ -71,18 +71,6 @@ void server_send_html(String html) {
   server->send(200, "text/html", html);
 }
 
-void on_reset_all(){
-  og.state = OG_STATE_RESET;
-}
-
-void on_clear_log(){
-  og.log_reset();
-}
-
-void on_test(){
-  //server_send_html(scanned_ssids);
-}
-
 void server_send_result(byte code, const char* item = NULL) {
   String html = F("{\"result\":");
   html += code;
@@ -318,6 +306,29 @@ bool verify_device_key() {
   if(server->hasArg("dkey") && (server->arg("dkey") == og.options[OPTION_DKEY].sval))
     return true;
   return false;
+}
+
+void on_reset_all(){
+  if(!verify_device_key()) {
+    server_send_result(HTML_UNAUTHORIZED);
+    return;
+  }
+
+  og.state = OG_STATE_RESET;
+  server_send_result(HTML_SUCCESS);
+}
+
+void on_clear_log() {
+  if(!verify_device_key()) {
+    server_send_result(HTML_UNAUTHORIZED);
+    return;
+  }
+  og.log_reset();
+  server_send_result(HTML_SUCCESS);  
+}
+
+void on_test(){
+  //server_send_html(scanned_ssids);
 }
 
 void on_sta_change_controller() {
@@ -1260,18 +1271,6 @@ void do_loop() {
     og.restart();
     break;
     
-      
-  /*case OG_STATE_RESTART:
-    if(curr_local_access_en)
-      server->handleClient();
-    if(millis() > restart_timeout) {
-      og.state = OG_STATE_INITIAL;
-      DEBUG_PRINTLN(F("Setting state to OG_STATE_INITIAL and restarting"));
-      og.restart();
-    }
-    break;
-  */
-      
   case OG_STATE_WAIT_RESTART:
     if(dns) dns->processNextRequest();  
     if(server) server->handleClient();    

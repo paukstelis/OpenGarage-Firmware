@@ -50,12 +50,13 @@ int main(int argc, char* argv[])
   fclose(lp);
 }
 
+char in[10000];
+char out[10000];
+
 void html2raw(const char *hfname, const char *hsname, FILE *hp) {
   FILE *fp = fopen(hfname, "rb");
   if(!fp) { file_error(hfname); return; }
 
-  char in[1000];
-  char out[1000];
   int size;
   char c;
   int i;

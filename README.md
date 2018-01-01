@@ -8,7 +8,7 @@ For Firmware release notes, go to [https://github.com/OpenGarage/OpenGarage-Firm
 
 ### Firmware Compilation Instructions:
 
-##### Requirement:
+#### Requirement:
 
 * Arduino (https://arduino.cc) with ESP8266 core 2.3 or above for Arduino (https://github.com/esp8266/Arduino)
 * Instead of installing Arduino, you can also directly use **makeESPArduino** (https://github.com/plerup/makeEspArduino)
@@ -16,14 +16,14 @@ For Firmware release notes, go to [https://github.com/OpenGarage/OpenGarage-Firm
 * MQTT PubSUbClient https://github.com/Imroy/pubsubclient
 * This (OpenGarage) library
 
-##### Setting up a Dev Environment
+#### Setting up a Dev Environment
 
 * Install Arduino with ESP8266 core 2.3, or alternatively, install makeESPArduino
 * Install Blynk library and pubsubclient library refrenced above (IMroy version)
 * Download this repository and extract the OpenGarage library to your Arduino's `libraries` folder.
 * Follow the README.txt in the Modifications folder to modify Update.h in your ESP8266 core files.
 
-##### Compilation
+#### Compilation
 
 To compile the firmware code using makeESPArduino, simply run `make` in command line. You may need to open `Makefile` and modify some path variables therein to match where you installed the `esp8266` folder.
 
@@ -38,7 +38,7 @@ Press Ctrl + R to compile. The compiled firmware (named mainArduino.cpp.bin) is 
 The firmware supports built-in web interface. The HTML data are embedded as program memory strings. Go to the `html` subfolder, which contains the original HTML files, and a `html2raw` tool to convert these HTML files into program memory strings. If you make changes to the HTML files, re-run `html2raw` to re-generate the program memory strings. You can also directly modify the program memory strings, but keeping the original HTML files makes it easy to check and verify your HTML files in a browser.
 
 
-##### Uploading
+#### Uploading
 
 As OpenGarage firmware supports OTA (over-the-air) update, you can upload the firmware through the web interface. At the homepage, find the **Update** button and follow that to upload a new firmware. If your OpenGarage is in AP mode and not connected to any WiFi network yet, you can open http://192.168.4.1/update and that's the same interface.
 
@@ -63,7 +63,7 @@ If for any reason you need to upload the firmware through USB, you should:
 Alternatively, if you use makeESPArduino, simply put OpenGarage in bootloading mode, and run `make upload`.
 
 
-##### Firmware User Manual and API
+#### Firmware User Manual and API
 
 Go to the `doc` folder to find the user manual as well as the API document for each firmware version.
 

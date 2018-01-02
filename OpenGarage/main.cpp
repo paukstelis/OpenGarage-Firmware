@@ -844,18 +844,18 @@ void perform_notify(String s) {
   }
 }
 
-void perform_automation(byte event) {
+void process_dynamics(byte event) {
   static bool automationclose_triggered=false;
   byte ato = og.options[OPTION_ATO].ival;
   byte atob = og.options[OPTION_ATOB].ival;
-  byte atoc = og.options[OPTION_ATOC].ival;
-  if(!ato && !atob && !atoc) {
+  byte noto = og.options[OPTION_NOTO].ival;
+  if(!ato && !atob && !noto) {
     justopen_timestamp = 0;
     return;
   }
   if(event == DOOR_STATUS_JUST_OPENED) {
     justopen_timestamp = curr_utc_time; // record time stamp
-    if (atoc & OG_NOTIFY_DO)
+    if (noto & OG_NOTIFY_DO)
       { perform_notify(og.options[OPTION_NAME].sval + " just OPENED!");}
     
     //If the door is set to auto close at a certain hour, ensure if manually opened it doesn't autoshut
@@ -866,7 +866,7 @@ void perform_automation(byte event) {
 
   } else if (event == DOOR_STATUS_JUST_CLOSED) {
     justopen_timestamp = 0; // reset time stamp
-    if (atoc & OG_NOTIFY_DC)
+    if (noto & OG_NOTIFY_DC)
       { perform_notify(og.options[OPTION_NAME].sval + " just CLOSED!");}
 
   } else if (event == DOOR_STATUS_REMAIN_OPEN) {
@@ -997,22 +997,6 @@ void check_status() {
 
     //Upon change
     if(event == DOOR_STATUS_JUST_OPENED || event == DOOR_STATUS_JUST_CLOSED) {
-      //Debug Beep (only if sound is enabled)
-      if(og.options[OPTION_ALM].ival){
-        /*og.play_note(1000);
-        delay(500);
-        og.play_note(0);*/
-      }
-      DEBUG_PRINT(curr_utc_time);
-      if(event == DOOR_STATUS_JUST_OPENED)  {	
-        DEBUG_PRINTLN(F(" Sending State Change event to connected systems, value: DOOR_STATUS_JUST_OPENED")); }
-      else if(event == DOOR_STATUS_JUST_CLOSED) {	
-        DEBUG_PRINTLN(F(" Sending State Change event to connected systems, value: DOOR_STATUS_JUST_CLOSED")); }
-      else {
-        DEBUG_PRINTLN(F(" Sending State Change event to connected systems, value: OTHER")); 
-        DEBUG_PRINTLN(String(event,DEC));
-      }
-
       // write log record
       DEBUG_PRINTLN(" Update Local Log"); 
       LogStruct l;
@@ -1020,8 +1004,23 @@ void check_status() {
       l.status = door_status;
       l.dist = distance;
       og.write_log(l);
+
+#if 0
+      //Debug Beep (only if sound is enabled)
+      if(og.options[OPTION_ALM].ival){
+        og.play_note(1000);
+        delay(500);
+        og.play_note(0);
+      }
+      DEBUG_PRINT(curr_utc_time);
+      if(event == DOOR_STATUS_JUST_OPENED)  {	
+        DEBUG_PRINTLN(F(" Sending State Change event to connected systems, value: DOOR_STATUS_JUST_OPENED")); }
+      else if(event == DOOR_STATUS_JUST_CLOSED) {	
+        DEBUG_PRINTLN(F(" Sending State Change event to connected systems, value: DOOR_STATUS_JUST_CLOSED")); }
+#endif
       
       // Blynk notification
+#if 0
       byte ato = og.options[OPTION_ATO].ival;
       if(curr_cloud_access_en && Blynk.connected() && ato) {
         //The official firmware only sends these notifications on ato enabled (which seems a somewhat unrelated function)
@@ -1056,23 +1055,21 @@ void check_status() {
           mqttclient.publish(og.options[OPTION_NAME].sval + "/OUT/CHANGE",String(event,DEC)); 
         }
       }
-
+#endif
     } //End state change updates
 
     //Send current status only on change and longer interval
     if ((curr_utc_time >checkstatus_report_timeout) || (event == DOOR_STATUS_JUST_OPENED || event == DOOR_STATUS_JUST_CLOSED) ){
+#if 0
       DEBUG_PRINT(curr_utc_time);
-      uint32_t ram = ESP.getFreeHeap();
-      //DEBUG_PRINTLN(" RAM: "+ram);
       if(event == DOOR_STATUS_REMAIN_OPEN)  {	
         DEBUG_PRINTLN(F(" Sending State Refresh to connected systems, value: OPEN")); }
       else if(event == DOOR_STATUS_REMAIN_CLOSED) {	
         DEBUG_PRINTLN(F(" Sending State Refresh to connected systems, value: CLOSED")); }
-
+#endif
       // report status to Blynk
       if(curr_cloud_access_en && Blynk.connected()) {
         DEBUG_PRINTLN(F(" Update Blynk (State Refresh)"));
-        Blynk.virtualWrite(BLYNK_PIN_RCNT, read_cnt);
         Blynk.virtualWrite(BLYNK_PIN_DIST, distance);
         (door_status) ? blynk_led.on() : blynk_led.off();
         Blynk.virtualWrite(BLYNK_PIN_IP, get_ip());
@@ -1099,12 +1096,12 @@ void check_status() {
           //DEBUG_PRINTLN(curr_utc_time + " Sending MQTT State Notification: CLOSED");
         }
       }
-      //Set to run every 5 seconds
-      checkstatus_report_timeout= curr_utc_time + 5; 
+      // Send status report every 15 seconds: we don't need to send updates frequently if there is no status change.
+      checkstatus_report_timeout= curr_utc_time + 15; 
     }
     
-    //Process any built in automations
-    perform_automation(event);
+    // Process dynamics: automation and notifications
+    process_dynamics(event);
     checkstatus_timeout = curr_utc_time + og.options[OPTION_RIV].ival;
     
   }

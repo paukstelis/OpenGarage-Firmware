@@ -65,8 +65,8 @@
 #define OG_NOTIFY_NONE  0x00
 #define OG_NOTIFY_DO    0x01
 #define OG_NOTIFY_DC    0x02
-#define OG_NOTIFY_VL    0x03
-#define OG_NOTIFY_VA    0x04
+#define OG_NOTIFY_VL    0x04
+#define OG_NOTIFY_VA    0x08
 
 #define OG_STATE_INITIAL        0
 #define OG_STATE_CONNECTING     1
@@ -79,7 +79,6 @@
 #define BLYNK_PIN_RELAY V1
 #define BLYNK_PIN_LCD   V2
 #define BLYNK_PIN_DIST  V3
-#define BLYNK_PIN_RCNT  V4
 #define BLYNK_PIN_IP    V5
 
 #define MAX_LOG_RECORDS    100
@@ -107,7 +106,7 @@ typedef enum {
   OPTION_ATO,     // automation options
   OPTION_ATIB,    // automation interval B (in hours)
   OPTION_ATOB,    // automation options B
-  OPTION_ATOC,    // automation options C
+  OPTION_NOTO,    // notification options
   OPTION_USI,     // use static IP
   OPTION_SSID,    // wifi ssid
   OPTION_PASS,    // wifi password

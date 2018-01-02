@@ -102,7 +102,7 @@ function show() {
     }
     //Use correct graphics
     if (jd.vehicle>=3){ //3 is disabled
-      //$('#pic').attr('src', (jd.door?'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/DoorOpen.png':'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/DoorShut.png'));
+      $('#pic').attr('src', (jd.door?'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/DoorOpen.png':'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/DoorShut.png'));
     }else{
       $('#pic').attr('src', jd.door?'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/Open.png':(jd.vehicle?'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/ClosedPresent.png':'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/ClosedAbsent.png'));
     }

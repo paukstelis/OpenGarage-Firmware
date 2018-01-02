@@ -233,7 +233,7 @@ $('#lbl_vstatus').text(jd.vehicle & !jd.door?'Present':(!jd.vehicle & !jd.door?'
 }
 //Use correct graphics
 if (jd.vehicle>=3){ //3 is disabled
-//$('#pic').attr('src', (jd.door?'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/DoorOpen.png':'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/DoorShut.png'));
+$('#pic').attr('src', (jd.door?'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/DoorOpen.png':'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/DoorShut.png'));
 }else{
 $('#pic').attr('src', jd.door?'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/Open.png':(jd.vehicle?'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/ClosedPresent.png':'https://github.com/OpenGarage/OpenGarage-Firmware/raw/master/icons/ClosedAbsent.png'));
 }
@@ -340,6 +340,9 @@ const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta 
 <tr><td><b>MQTT Server:<a href='#mqttInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='mqttInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>MQTT provides additional workflow options through tools like NodeRed (e.g. SMS, email).</p></div></b></td><td><input type='text' size=16 maxlength=20 id='mqtt' data-mini='true' value=''></td></tr>
 </table> 
 <table>
+<tr><td colspan=4><b>Choose Notifications:</b></td></tr>
+<tr><td><input type='checkbox' id='noto0' data-mini='true'><label for='noto0'>Door<br> Open</label></td><td><input type='checkbox' id='noto1' data-mini='true' ><label for='noto1'>Door<br> Close</label></td>
+<td><input type='checkbox' id='noto2' data-mini='true' disabled><label for='noto2'>Vehicle<br> Leave</label></td><td><input type='checkbox' id='noto3' data-mini='true' disabled ><label for='noto3'>Vehicle<br> Arrive</label></td></tr>
 <tr><td colspan=4><b>Automation:</b></td></tr>
 <tr><td colspan=4></td></tr><tr><td colspan=4></td></tr>
 <tr><td colspan=4>If open for longer than:</td></tr>
@@ -347,9 +350,6 @@ const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta 
 <tr><td colspan=4>If open after time:<small> (Use UTC 24hr format)</small>:</td></tr>
 <tr><td><input type='text' size=3 maxlength=3 id='atib' value=3 data-mini='true'></td><td> UTC:</td><td><input type='checkbox' id='atob0' data-mini='true'><label for='atob0'>Notify me</label></td><td><input type='checkbox' id='atob1' data-mini='true'><label for='atob1'>Auto-close</label></td></tr>
 </table><table>
-<tr><td colspan=4>Change Notifications:</td></tr>
-<tr><td><input type='checkbox' id='atoc0' data-mini='true'><label for='atoc0'>Door<br> Open</label></td><td><input type='checkbox' id='atoc1' data-mini='true' ><label for='atoc1'>Door<br> Close</label></td>
-<td><input type='checkbox' id='atoc2' data-mini='true' disabled><label for='atoc2'>Vehicle<br> Leave</label></td><td><input type='checkbox' id='atoc3' data-mini='true' disabled ><label for='atoc3'>Vehicle<br> Arrive</label></td></tr>
 </table>
 </div>
 <div id='div_other' style='display:none;'>
@@ -430,9 +430,9 @@ comm+='&ato='+ato;
 var atob=0;
 for(var i=1;i>=0;i--) { atob=(atob<<1)+eval_cb('#atob'+i); }
 comm+='&atob='+atob;
-var atoc=0;
-for(var i=1;i>=0;i--) { atoc=(atoc<<1)+eval_cb('#atoc'+i); }
-comm+='&atoc='+atoc;
+var noto=0;
+for(var i=1;i>=0;i--) { noto=(noto<<1)+eval_cb('#noto'+i); }
+comm+='&noto='+noto;
 comm+='&name='+encodeURIComponent($('#name').val());
 comm+='&auth='+encodeURIComponent($('#auth').val());
 comm+='&iftt='+encodeURIComponent($('#iftt').val());
@@ -476,7 +476,7 @@ $('#ati').val(jd.ati);
 $('#atib').val(jd.atib);
 for(var i=0;i<=1;i++) {if(jd.ato&(1<<i)) $('#ato'+i).attr('checked',true).checkboxradio('refresh');}
 for(var i=0;i<=1;i++) {if(jd.atob&(1<<i)) $('#atob'+i).attr('checked',true).checkboxradio('refresh');}
-for(var i=0;i<=1;i++) {if(jd.atoc&(1<<i)) $('#atoc'+i).attr('checked',true).checkboxradio('refresh');}
+for(var i=0;i<=1;i++) {if(jd.noto&(1<<i)) $('#noto'+i).attr('checked',true).checkboxradio('refresh');}
 $('#name').val(jd.name);
 $('#auth').val(jd.auth);
 $('#iftt').val(jd.iftt);

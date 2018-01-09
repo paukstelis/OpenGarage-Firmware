@@ -64,9 +64,10 @@ OptionStruct OpenGarage::options[] = {
 };
 
 /* Variables and functions for handling Ultrasonic Distance sensor */
-#define KAVG 3  // k average
+#define KAVG 5  // k average
 volatile uint32_t ud_start = 0;
 volatile byte ud_i = 0;
+volatile boolean fullbuffer = false;
 volatile uint32_t ud_buffer[KAVG];
 volatile boolean triggered = false;
 
@@ -75,7 +76,7 @@ void ud_start_trigger() {
   digitalWrite(PIN_TRIG, LOW);
   delayMicroseconds(2);
   digitalWrite(PIN_TRIG, HIGH);
-  delayMicroseconds(10);
+  delayMicroseconds(20);
   digitalWrite(PIN_TRIG, LOW);
   triggered = true;
 }
@@ -92,9 +93,10 @@ ICACHE_RAM_ATTR void ud_isr() {
     ud_buffer[ud_i] = micros() - ud_start; // calculate elapsed time
     if(ud_buffer[ud_i]>26233L) ud_buffer[ud_i] = 26233L;  // clamp time value
     ud_i = (ud_i+1)%KAVG; // circular buffer
-    if(ud_i) {  // we want to read KAVG times consecutively
+    if(ud_i==0) fullbuffer=true;
+    /*if(ud_i) {  // we want to read KAVG times consecutively
       ud_start_trigger();
-    }
+    }*/
   }
 }
 
@@ -117,7 +119,9 @@ void OpenGarage::begin() {
   delay(500);
   if(digitalRead(PIN_LED)==HIGH) {
     led_reverse = 1;  // if no external LED connected, reverse logic
+    //Serial.println(F("reverse logic"));
   } else {
+    //Serial.println(F("normal logic"));
   }
 
   pinMode(PIN_LED, OUTPUT);
@@ -138,7 +142,7 @@ void OpenGarage::begin() {
   }
 
   // setup ticker
-  ud_ticker.attach_ms(3000, ud_ticker_cb);
+  ud_ticker.attach_ms(500, ud_ticker_cb);
   attachInterrupt(PIN_ECHO, ud_isr, CHANGE);
   // play a tune at startup
   //play_startup_tune();
@@ -236,47 +240,29 @@ void OpenGarage::options_save() {
   file.close();
 }
 
-/*
-ulong OpenGarage::read_distance_once() {
-  //TODO handle max value as handled error in the UI - check long distance for car detection
-  digitalWrite(PIN_TRIG, LOW);
-  delayMicroseconds(2);
-  digitalWrite(PIN_TRIG, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_TRIG, LOW);
-  // wait till echo pin's rising edge
-  unsigned long quit_time=micros()+26233L;
-  while((digitalRead(PIN_ECHO)==LOW)&& (micros()<quit_time)) {
-    yield();
-  };
-  unsigned long start_time = micros();
-  quit_time=start_time+26233L;
-  //wait till echo pin's falling edge
-  while((digitalRead(PIN_ECHO)==HIGH) && (micros()<quit_time)) {
-    yield();
-  }
-  ulong lapse = micros() - start_time;
-  if (lapse>26233L) lapse = 26233L;
-  //DEBUG_PRINTLN(F("Distance issue, setting to low value"));
-  //DEBUG_PRINT(lapse);
-  return lapse;
-}
-*/
-
 uint OpenGarage::read_distance() {
   byte i;
-  unsigned long _time = 0;
-  // do three readings in a roll to reduce noise
-  //byte K = 3;
+  //unsigned long _time = 0;
+  uint32_t buf[KAVG];
   noInterrupts(); // turn off interrupts while we read buffer
+  if(!fullbuffer) return ud_i>0? (uint)(ud_buffer[ud_i-1]*0.01716f) : 0;
+  // copy ud_buffer to local buffer
   for(i=0;i<KAVG;i++) {
-    //_time += read_distance_once();
-    //delay(50);
-    _time += ud_buffer[i];
+    buf[i] = ud_buffer[i];
   }
   interrupts();
-  _time /= KAVG;
-  return (uint)(_time*0.01716f);  // 34320 cm / 2 / 10^6 s
+  // partial sorting of buf to perform median filtering
+  byte out, in;
+  for(out=1; out<=KAVG/2; out++){ 
+    uint32_t temp = buf[out];
+    in = out;
+    while(in>0 && buf[in-1]>temp) {
+      buf[in] = buf[in-1]; 
+      in--;
+    }
+    buf[in] = temp;   
+  }  
+  return (uint)(buf[KAVG/2]*0.01716f);  // 34320 cm / 2 / 10^6 s
 }
 
 bool OpenGarage::get_cloud_access_en() {

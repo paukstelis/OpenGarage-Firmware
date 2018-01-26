@@ -64,7 +64,7 @@ OptionStruct OpenGarage::options[] = {
 };
 
 /* Variables and functions for handling Ultrasonic Distance sensor */
-#define KAVG 5  // k average
+#define KAVG 7  // k average
 volatile uint32_t ud_start = 0;
 volatile byte ud_i = 0;
 volatile boolean fullbuffer = false;
@@ -116,8 +116,14 @@ void OpenGarage::begin() {
 
   // detect LED logic
   pinMode(PIN_LED, INPUT);
-  delay(500);
-  if(digitalRead(PIN_LED)==HIGH) {
+  // use median filtering to detect led logic
+  byte nl=0, nh=0;
+  for(byte i=0;i<KAVG;i++) {
+    if(digitalRead(PIN_LED)==HIGH) nh++;
+    else nl++;
+    delay(50);
+  }
+  if(nh>nl) { // if we get more HIGH readings
     led_reverse = 1;  // if no external LED connected, reverse logic
     //Serial.println(F("reverse logic"));
   } else {
@@ -142,10 +148,8 @@ void OpenGarage::begin() {
   }
 
   // setup ticker
-  ud_ticker.attach_ms(500, ud_ticker_cb);
+  ud_ticker.attach_ms(250, ud_ticker_cb);
   attachInterrupt(PIN_ECHO, ud_isr, CHANGE);
-  // play a tune at startup
-  //play_startup_tune();
 }
 
 void OpenGarage::options_setup() {

@@ -614,6 +614,7 @@ void do_setup()
   WiFi.persistent(false); // turn off persistent, fixing flash crashing issue
   og.begin();
   og.options_setup();
+  if(og.get_mode() == OG_MOD_AP) og.play_startup_tune();
   DEBUG_PRINT(F("Complile Info: "));
   DEBUG_PRINT(F(__DATE__));
   DEBUG_PRINT(F(" "));

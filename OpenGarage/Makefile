@@ -33,11 +33,13 @@ ESP_ROOT ?= $(HOME)/esp8266/
 # Output directory
 BUILD_ROOT ?= /tmp/$(MAIN_NAME)
 
-UPLOAD_SPEED ?= 230400
+UPLOAD_SPEED ?= 921600
 UPLOAD_VERB ?= -v
-UPLOAD_RESET ?= ck
+UPLOAD_RESET ?= nodemcu
 
 FLASH_DEF ?= 4M1M
+FLASH_MODE ?= dio
+FLASH_SPEED ?= 40
 
 # Include possible project makefile. This can be used to override the defaults below
 -include $(firstword $(PROJ_CONF) $(dir $(SKETCH))config.mk)

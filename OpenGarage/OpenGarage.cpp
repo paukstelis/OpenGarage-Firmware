@@ -54,6 +54,8 @@ OptionStruct OpenGarage::options[] = {
   {"ssid", 0, 0, ""},  // string options have 0 max value
   {"pass", 0, 0, ""},
   {"auth", 0, 0, ""},
+  {"bdmn", 0,            0, "blynk-cloud.com"},
+  {"bprt", 80,       65535, ""},
   {"dkey", 0, 0, DEFAULT_DKEY},
   {"name", 0, 0, DEFAULT_NAME},
   {"iftt", 0, 0, ""},

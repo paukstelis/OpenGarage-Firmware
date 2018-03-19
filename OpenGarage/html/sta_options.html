@@ -34,6 +34,8 @@
 <div id='div_cloud' style='display:none;'>
 <table cellpadding=1>
 <tr><td><b>Blynk Token:<a href='#BlynkInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Setup info</a><div data-role='popup' id='BlynkInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>Blynk provides remote access and monitoring. Install the app and use this QR to configure <a href='https://github.com/OpenGarage/OpenGarage-Firmware/blob/master/OGBlynkApp/og_blynk_1.0.png' target='_blank'>Blynk QR</a></p></div></b></td><td><input type='text' size=20 maxlength=32 id='auth' data-mini='true' value='-'></td></tr>
+<tr><td><b>Blynk Domain:<a href='#BlynkDomainInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='BlynkDomainInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>Specify a domain for a private Blynk server or use the default Blynk cloud option: blynk-cloud.com</p></div></b></td><td><input type='text' size=20 maxlength=32 id='bdmn' data-mini='true' value='-'></td></tr>
+<tr><td><b>Blynk Port:<a href='#BlynkPortInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='BlynkPortInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>Specify a port for a private Blynk server or use the default Blynk cloud option: 80</p></div></b></td><td><input type='text' size=5 maxlength=5 id='bprt' data-mini='true' value=0></td></tr>
 <tr><td><b>IFTTT Key:<a href='#ifttInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='ifttInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p><a href='https://ifttt.com' target='_blank'>IFTTT</a> provides additional notification options (e.g. SMS, email) besides Blynk.</p></div></b></td><td><input type='text' size=20 maxlength=64 id='iftt' data-mini='true' value='-'></td></tr>
 <tr><td><b>MQTT Server:<a href='#mqttInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='mqttInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>MQTT provides additional workflow options through tools like NodeRed (e.g. SMS, email).</p></div></b></td><td><input type='text' size=16 maxlength=20 id='mqtt' data-mini='true' value=''></td></tr>
 </table> 
@@ -137,6 +139,8 @@ for(var i=1;i>=0;i--) { noto=(noto<<1)+eval_cb('#noto'+i); }
 comm+='&noto='+noto;
 comm+='&name='+encodeURIComponent($('#name').val());
 comm+='&auth='+encodeURIComponent($('#auth').val());
+comm+='&bdmn='+encodeURIComponent($('#bdmn').val());
+comm+='&bprt='+$('#bprt').val();
 comm+='&iftt='+encodeURIComponent($('#iftt').val());
 comm+='&mqtt='+encodeURIComponent($('#mqtt').val());
 if($('#cb_key').is(':checked')) {
@@ -181,6 +185,8 @@ for(var i=0;i<=1;i++) {if(jd.atob&(1<<i)) $('#atob'+i).attr('checked',true).chec
 for(var i=0;i<=1;i++) {if(jd.noto&(1<<i)) $('#noto'+i).attr('checked',true).checkboxradio('refresh');}
 $('#name').val(jd.name);
 $('#auth').val(jd.auth);
+$('#bdmn').val(jd.bdmn);
+$('#bprt').val(jd.bprt);
 $('#iftt').val(jd.iftt);
 $('#mqtt').val(jd.mqtt);
 $('#dvip').val(jd.dvip);

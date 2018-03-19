@@ -1242,7 +1242,7 @@ void do_loop() {
       DEBUG_PRINTLN(F("Web Server endpoints (STA mode) registered"));
 
       if(curr_cloud_access_en) {
-        Blynk.config(og.options[OPTION_AUTH].sval.c_str()); // use the config function
+        Blynk.config(og.options[OPTION_AUTH].sval.c_str(), og.options[OPTION_BDMN].sval.c_str(), (uint16_t) og.options[OPTION_BPRT].ival); // use the config function
         Blynk.connect();
         DEBUG_PRINTLN(F("Blynk Connected"));
       }

@@ -111,6 +111,8 @@ typedef enum {
   OPTION_SSID,    // wifi ssid
   OPTION_PASS,    // wifi password
   OPTION_AUTH,    // Blynk authentication token
+  OPTION_BDMN,    // Blynk Domain
+  OPTION_BPRT,    // Blynk Port
   OPTION_DKEY,    // device key
   OPTION_NAME,    // device name
   OPTION_IFTT,    // IFTTT token

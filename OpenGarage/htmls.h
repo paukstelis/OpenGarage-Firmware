@@ -129,7 +129,7 @@ xhr.send(fd);
 </script>
 </body>
 )";
-const char sta_home_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta name='viewport' content='width=device-width, initial-scale=1'><link rel='stylesheet' href='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css' type='text/css'><script src='http://code.jquery.com/jquery-1.9.1.min.js' type='text/javascript'></script><script src='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js' type='text/javascript'></script></head>
+const char sta_home_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta name='viewport' content='width=device-width, initial-scale=1'><link rel='stylesheet' href='//code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css' type='text/css'><script src='//code.jquery.com/jquery-1.9.1.min.js' type='text/javascript'></script><script src='//code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js' type='text/javascript'></script></head>
 <body>
 <style> table, th, td {border: 0px solid black;padding: 6px; border-collapse: collapse; }</style>
 <div data-role='page' id='page_home'><div data-role='header'><h3 id='head_name'>OG</h3></div>
@@ -249,9 +249,9 @@ $('#btn_click').html(jd.door?'Close Door':'Open Door').button('refresh');
 const char sta_logs_html[] PROGMEM = R"(<head>
 <title>OpenGarage</title>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
-<link rel='stylesheet' href='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css' type='text/css'>
-<script src='http://code.jquery.com/jquery-1.9.1.min.js' type='text/javascript'></script>
-<script src='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js' type='text/javascript'></script>
+<link rel='stylesheet' href='//code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css' type='text/css'>
+<script src='//code.jquery.com/jquery-1.9.1.min.js' type='text/javascript'></script>
+<script src='//code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js' type='text/javascript'></script>
 </head>
 <body>
 <div data-role='page' id='page_log'>
@@ -300,7 +300,7 @@ setTimeout(show_log, 10000);
 </script>
 </body>
 )";
-const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta name='viewport' content='width=device-width, initial-scale=1'><link rel='stylesheet' href='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css' type='text/css'><script src='http://code.jquery.com/jquery-1.9.1.min.js' type='text/javascript'></script><script src='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js' type='text/javascript'></script></head>
+const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta name='viewport' content='width=device-width, initial-scale=1'><link rel='stylesheet' href='//code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css' type='text/css'><script src='//code.jquery.com/jquery-1.9.1.min.js' type='text/javascript'></script><script src='//code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js' type='text/javascript'></script></head>
 <body>
 <style> table, th, td { border: 0px solid black; padding: 1px; border-collapse: collapse; } </style>
 <div data-role='page' id='page_opts'>
@@ -496,9 +496,9 @@ $('#subn').textinput(jd.usi>0?'enable':'disable');
 const char sta_update_html[] PROGMEM = R"(<head>
 <title>OpenGarage</title>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
-<link rel='stylesheet' href='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css' type='text/css'>
-<script src='http://code.jquery.com/jquery-1.9.1.min.js' type='text/javascript'></script>
-<script src='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js' type='text/javascript'></script>
+<link rel='stylesheet' href='//code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css' type='text/css'>
+<script src='//code.jquery.com/jquery-1.9.1.min.js' type='text/javascript'></script>
+<script src='//code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js' type='text/javascript'></script>
 </head>
 <body>
 <div data-role='page' id='page_update'>

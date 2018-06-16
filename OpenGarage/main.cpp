@@ -73,15 +73,19 @@ void server_send_html(String html) {
   server->send(200, "text/html", html);
 }
 
+void server_send_json(String json) {
+  server->send(200, "application/json", json);
+}
+
 void server_send_result(byte code, const char* item = NULL) {
-  String html = F("{\"result\":");
-  html += code;
+  String json = F("{\"result\":");
+  json += code;
   if (!item) item = "";
-  html += F(",\"item\":\"");
-  html += item;
-  html += F("\"");
-  html += F("}");
-  server_send_html(html);
+  json += F(",\"item\":\"");
+  json += item;
+  json += F("\"");
+  json += F("}");
+  server_send_json(json);
 }
 
 bool get_value_by_key(const char* key, uint& val) {
@@ -226,83 +230,83 @@ String get_ip() {
 
 void on_sta_controller() {
   if(curr_mode == OG_MOD_AP) return;
-  String html = "";
-  html += F("{\"dist\":");
-  html += distance;
-  html += F(",\"door\":");
-  html += door_status;
-  html += F(",\"vehicle\":");
-  html += vehicle_status;
-  html += F(",\"rcnt\":");
-  html += read_cnt;
-  html += F(",\"fwv\":");
-  html += og.options[OPTION_FWV].ival;
-  html += F(",\"name\":\"");
-  html += og.options[OPTION_NAME].sval;
-  html += F("\",\"mac\":\"");
-  html += get_mac();
-  html += F("\",\"cid\":");
-  html += ESP.getChipId();
-  html += F(",\"rssi\":");
-  html += (int16_t)WiFi.RSSI();
-  html += F("}");
-  server_send_html(html);
+  String json = "";
+  json += F("{\"dist\":");
+  json += distance;
+  json += F(",\"door\":");
+  json += door_status;
+  json += F(",\"vehicle\":");
+  json += vehicle_status;
+  json += F(",\"rcnt\":");
+  json += read_cnt;
+  json += F(",\"fwv\":");
+  json += og.options[OPTION_FWV].ival;
+  json += F(",\"name\":\"");
+  json += og.options[OPTION_NAME].sval;
+  json += F("\",\"mac\":\"");
+  json += get_mac();
+  json += F("\",\"cid\":");
+  json += ESP.getChipId();
+  json += F(",\"rssi\":");
+  json += (int16_t)WiFi.RSSI();
+  json += F("}");
+  server_send_json(json);
 }
 
 void on_sta_debug() {
-  String html = "";
-  html += F("{");
-  html += F("\"rcnt\":");
-  html += read_cnt;
-  html += F(",\"fwv\":");
-  html += og.options[OPTION_FWV].ival;
-  html += F(",\"name\":\"");
-  html += og.options[OPTION_NAME].sval;
-  html += F("\",\"mac\":\"");
-  html += get_mac();
-  html += F("\",\"cid\":");
-  html += ESP.getChipId();
-  html += F(",\"rssi\":");
-  html += (int16_t)WiFi.RSSI();
-  html += F(",\"bssid\":\"");
-  html += WiFi.BSSIDstr();
-  html += F("\",\"build\":\"");
-  html += (F(__DATE__));
-  html += F("\",\"Freeheap\":");
-  html += (uint16_t)ESP.getFreeHeap();
-  html += F("}");
-  server_send_html(html);
+  String json = "";
+  json += F("{");
+  json += F("\"rcnt\":");
+  json += read_cnt;
+  json += F(",\"fwv\":");
+  json += og.options[OPTION_FWV].ival;
+  json += F(",\"name\":\"");
+  json += og.options[OPTION_NAME].sval;
+  json += F("\",\"mac\":\"");
+  json += get_mac();
+  json += F("\",\"cid\":");
+  json += ESP.getChipId();
+  json += F(",\"rssi\":");
+  json += (int16_t)WiFi.RSSI();
+  json += F(",\"bssid\":\"");
+  json += WiFi.BSSIDstr();
+  json += F("\",\"build\":\"");
+  json += (F(__DATE__));
+  json += F("\",\"Freeheap\":");
+  json += (uint16_t)ESP.getFreeHeap();
+  json += F("}");
+  server_send_json(json);
 }
 
 void on_sta_logs() {
   if(curr_mode == OG_MOD_AP) return;
-  String html = "";
-  html += F("{\"name\":\"");
-  html += og.options[OPTION_NAME].sval;
-  html += F("\",\"time\":");
-  html += curr_utc_time;
-  html += F(",\"logs\":[");
+  String json = "";
+  json += F("{\"name\":\"");
+  json += og.options[OPTION_NAME].sval;
+  json += F("\",\"time\":");
+  json += curr_utc_time;
+  json += F(",\"logs\":[");
   if(!og.read_log_start()) {
-    html += F("]}");
-    server_send_html(html);
+    json += F("]}");
+    server_send_json(json);
     return;
   }
   LogStruct l;
   for(uint i=0;i<og.options[OPTION_LSZ].ival;i++) {
     if(!og.read_log_next(l)) break;
     if(!l.tstamp) continue;
-    html += F("[");
-    html += l.tstamp;
-    html += F(",");
-    html += l.status;
-    html += F(",");
-    html += l.dist;
-    html += F("],");
+    json += F("[");
+    json += l.tstamp;
+    json += F(",");
+    json += l.status;
+    json += F(",");
+    json += l.dist;
+    json += F("],");
   }
   og.read_log_end();
-  html.remove(html.length()-1); // remove the extra ,
-  html += F("]}");
-  server_send_html(html);
+  json.remove(json.length()-1); // remove the extra ,
+  json += F("]}");
+  server_send_json(json);
 }
 
 bool verify_device_key() {
@@ -498,32 +502,32 @@ void on_sta_change_options() {
 
 void on_sta_options() {
   if(curr_mode == OG_MOD_AP) return;
-  String html = "{";
+  String json = "{";
   OptionStruct *o = og.options;
   for(byte i=0;i<NUM_OPTIONS;i++,o++) {
     if(!o->max) {
       if(i==OPTION_PASS || i==OPTION_DKEY) { // do not output password or device key
         continue;
       } else {
-        html += F("\"");
-        html += o->name;
-        html += F("\":");
-        html += F("\"");
-        html += o->sval;
-        html += F("\"");
-        html += ",";
+        json += F("\"");
+        json += o->name;
+        json += F("\":");
+        json += F("\"");
+        json += o->sval;
+        json += F("\"");
+        json += ",";
       }
     } else {  // if this is a int option
-      html += F("\"");
-      html += o->name;
-      html += F("\":");
-      html += o->ival;
-      html += ",";
+      json += F("\"");
+      json += o->name;
+      json += F("\":");
+      json += o->ival;
+      json += ",";
     }
   }
-  html.remove(html.length()-1); // remove the extra ,
-  html += F("}");
-  server_send_html(html);
+  json.remove(json.length()-1); // remove the extra ,
+  json += F("}");
+  server_send_json(json);
 }
 
 void on_ap_scan() {
@@ -550,11 +554,11 @@ void on_ap_change_config() {
 
 void on_ap_try_connect() {
   if(curr_mode == OG_MOD_STA) return;
-  String html = "{";
-  html += F("\"ip\":");
-  html += (WiFi.status() == WL_CONNECTED) ? (uint32_t)WiFi.localIP() : 0;
-  html += F("}");
-  server_send_html(html);
+  String json = "{";
+  json += F("\"ip\":");
+  json += (WiFi.status() == WL_CONNECTED) ? (uint32_t)WiFi.localIP() : 0;
+  json += F("}");
+  server_send_json(json);
   if(WiFi.status() == WL_CONNECTED && WiFi.localIP()) {
     /*DEBUG_PRINTLN(F("STA connected, updating option file"));
     og.options[OPTION_MOD].ival = OG_MOD_STA;

@@ -708,7 +708,7 @@ void on_sta_upload_fin() {
 
   if(!verify_device_key()) {
     server_send_result(HTML_UNAUTHORIZED);
-    Update.reset();
+    Update.end(false); // Update.reset(); FAB
     return;
   }
 

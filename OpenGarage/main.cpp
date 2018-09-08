@@ -37,7 +37,8 @@ OpenGarage og;
 ESP8266WebServer *server = NULL;
 DNSServer *dns = NULL;
 
-WidgetLED blynk_led(BLYNK_PIN_LED);
+WidgetLED blynk_door(BLYNK_PIN_DOOR);
+WidgetLED blynk_car(BLYNK_PIN_CAR);
 WidgetLCD blynk_lcd(BLYNK_PIN_LCD);
 
 static Ticker led_ticker;
@@ -266,7 +267,7 @@ void on_sta_debug() {
   html += F("\",\"build\":\"");
   html += (F(__DATE__));
   html += F("\",\"Freeheap\":");
-  html += (int16_t)ESP.getFreeHeap();
+  html += (uint16_t)ESP.getFreeHeap();
   html += F("}");
   server_send_html(html);
 }
@@ -1072,7 +1073,8 @@ void check_status() {
       if(curr_cloud_access_en && Blynk.connected()) {
         DEBUG_PRINTLN(F(" Update Blynk (State Refresh)"));
         Blynk.virtualWrite(BLYNK_PIN_DIST, distance);
-        (door_status) ? blynk_led.on() : blynk_led.off();
+        (door_status) ? blynk_door.on() : blynk_door.off();
+        (vehicle_status==1) ? blynk_car.on() : blynk_car.off();
         Blynk.virtualWrite(BLYNK_PIN_IP, get_ip());
         blynk_lcd.print(0, 0, get_ip());
         String str = ":";
@@ -1115,13 +1117,13 @@ void time_keeping() {
 
   if(!configured) {
     DEBUG_PRINTLN(F("Set time server"));
-    configTime(0, 0, "pool.ntp.org", "time.nist.org", NULL);
+    configTime(0, 0, "time.google.com", "pool.ntp.org", NULL);
     configured = true;
   }
 
   if(!curr_utc_time || (curr_utc_time > time_keeping_timeout)) {
     ulong gt = time(nullptr);
-    if(!gt) {
+    if(gt<978307200L) {
       // if we didn't get response, re-try after 2 seconds
       time_keeping_timeout = curr_utc_time + 2;
     } else {

@@ -24,7 +24,7 @@
 #define _DEFINES_H
 
 /** Firmware version, hardware version, and maximal values */
-#define OG_FWV    108   // Firmware version: 108 means 1.0.8
+#define OG_FWV    109   // Firmware version: 108 means 1.0.8
 
 /** GPIO pins */
 #define PIN_RELAY  15 //D8 on nodemcu
@@ -75,10 +75,11 @@
 #define OG_STATE_WAIT_RESTART   4
 #define OG_STATE_RESET          9
 
-#define BLYNK_PIN_LED   V0
+#define BLYNK_PIN_DOOR  V0
 #define BLYNK_PIN_RELAY V1
 #define BLYNK_PIN_LCD   V2
 #define BLYNK_PIN_DIST  V3
+#define BLYNK_PIN_CAR   V4
 #define BLYNK_PIN_IP    V5
 
 #define MAX_LOG_RECORDS    100

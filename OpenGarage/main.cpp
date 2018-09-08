@@ -69,6 +69,7 @@ static HTTPClient http;
 void do_setup();
 
 void server_send_html(String html) {
+  server->sendHeader("Access-Control-Allow-Origin", "*"); // from esp8266 2.4 this has to be sent explicitly
   server->send(200, "text/html", html);
 }
 
@@ -165,7 +166,8 @@ void on_home()
 void on_sta_view_options() {
   if(curr_mode == OG_MOD_AP) return;
   String html = FPSTR(sta_options_html);
-  server->send(200, "text/html", html);
+  //server->send(200, "text/html", html);
+  server_send_html(html);
   DEBUG_PRINTLN(F("Complete sending page"));
 }
 
@@ -560,6 +562,17 @@ void on_ap_try_connect() {
     //restart_ticker.once_ms(1000, og.restart); // restart once client receives IP address
     restart_in(1000);
   }
+}
+
+void on_ap_debug() {
+  String html = "";
+  html += F("{");
+  html += F("\"dist\":");
+  html += og.read_distance();
+  html += F(",\"fwv\":");
+  html += og.options[OPTION_FWV].ival;
+  html += F("}");
+  server_send_html(html);
 }
 
 // MQTT callback to read "Button" requests
@@ -1182,6 +1195,7 @@ void do_loop() {
       server->on("/js", on_ap_scan);
       server->on("/cc", on_ap_change_config);
       server->on("/jt", on_ap_try_connect);
+      server->on("/db", on_ap_debug);      
       server->on("/update", HTTP_GET, on_ap_update);
       server->on("/update", HTTP_POST, on_ap_upload_fin, on_ap_upload);      
       server->on("/resetall",on_reset_all);

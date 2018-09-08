@@ -18,7 +18,7 @@ For Firmware release notes, go to [https://github.com/OpenGarage/OpenGarage-Firm
 
 #### Setting up a Dev Environment
 
-* Install Arduino with ESP8266 core 2.3, or alternatively, install makeESPArduino
+* Install Arduino with ESP8266 core 2.3 or above, or alternatively, install makeESPArduino
 * Install Blynk library and pubsubclient library refrenced above (IMroy version)
 * Download this repository and extract the OpenGarage library to your Arduino's `libraries` folder.
 * Follow the README.txt in the Modifications folder to modify Update.h in your ESP8266 core files.
@@ -41,27 +41,6 @@ The firmware supports built-in web interface. The HTML data are embedded as prog
 #### Uploading
 
 As OpenGarage firmware supports OTA (over-the-air) update, you can upload the firmware through the web interface. At the homepage, find the **Update** button and follow that to upload a new firmware. If your OpenGarage is in AP mode and not connected to any WiFi network yet, you can open http://192.168.4.1/update and that's the same interface.
-
-If for any reason you need to upload the firmware through USB, you should:
-
-* Install CH340 driver:
-  - Mac OSX: (http://raysfiles.com/drivers/ch341ser_mac.zip)
-  - Linux: (dirver is not needed, make sure you run Arduino as root, or add 1a86:7523 to udev rules).
-  - Windows: driver is only needed for Win 7 64-bit or Win XP (http://raysfiles.com/drivers/ch341ser.exe)
-
-* In Arduino, select:
-  - Upload Speed -> 230400 (this will improve the upload speed)
-  - Port -> the correct serial port number
-
-* Let OpenGarage enter bootloading mode:
-  - Unplug the USB cable
-  - Press and hold the pushbutton on OpenGarage while plugging in the USB cable
-  - Release the pushbutton (the LED should stay on)
-  
-* In Arduino, press Ctrl + U to start uploading.
-
-Alternatively, if you use makeESPArduino, simply put OpenGarage in bootloading mode, and run `make upload`.
-
 
 #### Firmware User Manual and API
 

@@ -288,7 +288,7 @@ void on_sta_logs() {
     return;
   }
   LogStruct l;
-  for(uint i=0;i<MAX_LOG_RECORDS;i++) {
+  for(uint i=0;i<og.options[OPTION_LSZ].ival;i++) {
     if(!og.read_log_next(l)) break;
     if(!l.tstamp) continue;
     html += F("[");
@@ -396,6 +396,10 @@ void on_sta_change_options() {
         if(ival>o->max) {
           server_send_result(HTML_DATA_OUTOFBOUND, key);
           return;
+        }
+        if(i==OPTION_LSZ && ival < 20) {
+          // minimal log size is 20
+          server_send_result(HTML_DATA_OUTOFBOUND, key);
         }
         if(i==OPTION_CDT && ival < 50) {
           // click delay time should be at least 50 ms

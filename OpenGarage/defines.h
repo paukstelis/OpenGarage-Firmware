@@ -82,7 +82,8 @@
 #define BLYNK_PIN_CAR   V4
 #define BLYNK_PIN_IP    V5
 
-#define MAX_LOG_RECORDS    100
+#define DEFAULT_LOG_SIZE    100
+#define MAX_LOG_SIZE       500
 #define ALARM_FREQ         1000
 // door status histogram
 // number of values (maximum is 8)
@@ -100,6 +101,7 @@ typedef enum {
   OPTION_VTH,     // distance threshold vehicle detection
   OPTION_RIV,     // read interval
   OPTION_ALM,     // alarm mode
+  OPTION_LSZ,     // log size
   OPTION_HTP,     // http port
   OPTION_CDT,     // click delay time
   OPTION_MOD,     // mode

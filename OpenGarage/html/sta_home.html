@@ -14,7 +14,7 @@
 <tr><td colspan=3><label id='msg'></label></td></tr>
 </table><br />
 <div data-role='controlgroup' data-type='horizontal'>
-<button data-theme='b' id='btn_click'>Button</button>  
+<button data-theme='b' id='btn_click'>Button</button>
 <button data-theme='b' id='btn_opts'>Options</button>
 <button data-theme='b' id='btn_log'>Show Log</button>
 </div>
@@ -45,7 +45,7 @@ $('#btn_cll').click(function(e){
       else { show_msg('Log data cleared',2000,'green'); }
     });
   }
-});  
+});
 $('#btn_rbt').click(function(e){
   if(confirm('Reboot the device now?')){
     var comm = 'cc?reboot=1&dkey='+($('#dkey').val());
@@ -59,7 +59,7 @@ $('#btn_rbt').click(function(e){
       }
     });
   }
-});   
+});
 $('#btn_rap').click(function(e){
   if(confirm('Reset the device to AP mode?')){
     var comm = 'cc?apmode=1&dkey='+($('#dkey').val());
@@ -72,7 +72,7 @@ $('#btn_rap').click(function(e){
       }
     });
   }
-});  
+});
 $('#btn_click').click(function(e) {
 var comm = 'cc?click=1&dkey='+($('#dkey').val());
   $.getJSON(comm)

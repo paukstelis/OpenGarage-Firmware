@@ -42,6 +42,7 @@ OptionStruct OpenGarage::options[] = {
   {"vth", 150,       65535, ""},
   {"riv", 5,           300, ""},
   {"alm", OG_ALM_5,      2, ""},
+  {"lsz", DEFAULT_LOG_SIZE,400,""},
   {"htp", 80,        65535, ""},
   {"cdt", 1000,       5000, ""},
   {"mod", OG_MOD_AP,   255, ""},
@@ -292,7 +293,7 @@ void OpenGarage::write_log(const LogStruct& data) {
     file.write((const byte*)&data, sizeof(LogStruct));
     LogStruct l;
     l.tstamp = 0;
-    for(;next<MAX_LOG_RECORDS;next++) {
+    for(;next<MAX_LOG_SIZE;next++) {  // pre-fill the log file to maximum size
       file.write((const byte*)&l, sizeof(LogStruct));
     }
   } else {
@@ -302,7 +303,7 @@ void OpenGarage::write_log(const LogStruct& data) {
       return;
     }
     file.readBytes((char*)&curr, sizeof(curr));
-    uint next = (curr+1) % MAX_LOG_RECORDS;
+    uint next = (curr+1) % options[OPTION_LSZ].ival;
     file.seek(0, SeekSet);
     file.write((const byte*)&next, sizeof(next));
 
@@ -319,7 +320,7 @@ bool OpenGarage::read_log_start() {
   if(!log_file) return false;
   uint curr;
   if(log_file.readBytes((char*)&curr, sizeof(curr)) != sizeof(curr)) return false;
-  if(curr>=MAX_LOG_RECORDS) return false;
+  if(curr>=MAX_LOG_SIZE) return false;
   return true;
 }
 

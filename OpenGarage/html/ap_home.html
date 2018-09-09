@@ -35,9 +35,9 @@ function tryConnect() {
     id('butt').onclick=function rd(){window.open('http://'+ip);}
     clearInterval(tci);
     }
-  }    
+  }
   xhr.open('GET', 'jt', true); xhr.send();
-}  
+}
 function sf() {
   id('msg').innerHTML='';
   var xhr=new XMLHttpRequest();
@@ -52,7 +52,6 @@ function sf() {
   xhr.open('GET', comm, true); xhr.send();
   id('butt').disabled=true;id('ssid').disabled=true;id('pass').disabled=true;id('auth').disabled=true;
 }
-  
 function loadSSIDs() {
   var xhr=new XMLHttpRequest();
   xhr.onreadystatechange=function() {

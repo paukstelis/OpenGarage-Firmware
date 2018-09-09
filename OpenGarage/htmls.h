@@ -35,9 +35,9 @@ id('butt').innerHTML='Go to '+ip;id('butt').disabled=false;
 id('butt').onclick=function rd(){window.open('http://'+ip);}
 clearInterval(tci);
 }
-}    
+}
 xhr.open('GET', 'jt', true); xhr.send();
-}  
+}
 function sf() {
 id('msg').innerHTML='';
 var xhr=new XMLHttpRequest();
@@ -52,7 +52,6 @@ var comm='cc?ssid='+encodeURIComponent(id('ssid').value)+'&pass='+encodeURICompo
 xhr.open('GET', comm, true); xhr.send();
 id('butt').disabled=true;id('ssid').disabled=true;id('pass').disabled=true;id('auth').disabled=true;
 }
-
 function loadSSIDs() {
 var xhr=new XMLHttpRequest();
 xhr.onreadystatechange=function() {
@@ -145,7 +144,7 @@ const char sta_home_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta nam
 <tr><td colspan=3><label id='msg'></label></td></tr>
 </table><br />
 <div data-role='controlgroup' data-type='horizontal'>
-<button data-theme='b' id='btn_click'>Button</button>  
+<button data-theme='b' id='btn_click'>Button</button>
 <button data-theme='b' id='btn_opts'>Options</button>
 <button data-theme='b' id='btn_log'>Show Log</button>
 </div>
@@ -176,7 +175,7 @@ if(jd.result!=1) show_msg('Check device key and try again.',2000,'red');
 else { show_msg('Log data cleared',2000,'green'); }
 });
 }
-});  
+});
 $('#btn_rbt').click(function(e){
 if(confirm('Reboot the device now?')){
 var comm = 'cc?reboot=1&dkey='+($('#dkey').val());
@@ -190,7 +189,7 @@ setTimeout(function(){location.reload(true);}, 10000);
 }
 });
 }
-});   
+});
 $('#btn_rap').click(function(e){
 if(confirm('Reset the device to AP mode?')){
 var comm = 'cc?apmode=1&dkey='+($('#dkey').val());
@@ -203,7 +202,7 @@ $('#msg').html('Device is now in AP mode. Log on<br>to SSID OG_xxxxxx, then <br>
 }
 });
 }
-});  
+});
 $('#btn_click').click(function(e) {
 var comm = 'cc?click=1&dkey='+($('#dkey').val());
 $.getJSON(comm)
@@ -304,12 +303,12 @@ const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta 
 <body>
 <style> table, th, td { border: 0px solid black; padding: 1px; border-collapse: collapse; } </style>
 <div data-role='page' id='page_opts'>
-<div data-role='header'><h3>Edit Options</h3></div>    
+<div data-role='header'><h3>Edit Options</h3></div>
 <div data-role='content'>
 <fieldset data-role='controlgroup' data-type='horizontal'>
 <input type='radio' name='opt_group' id='basic' onclick='toggle_opt()' checked><label for='basic'>Basic</label>
 <input type='radio' name='opt_group' id='cloud' onclick='toggle_opt()'><label for='cloud'>Integration</label>
-<input type='radio' name='opt_group' id='other' onclick='toggle_opt()'><label for='other'>Advanced</label>        
+<input type='radio' name='opt_group' id='other' onclick='toggle_opt()'><label for='other'>Advanced</label>
 </fieldset>
 <div id='div_basic'>
 <table cellpadding=2>
@@ -320,17 +319,26 @@ const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta 
 <option value=1>Side Mount</option>
 <option value=2>Switch (Low Mount)</option>
 <option value=3>Switch (High Mount)</option>
-</select></td></tr> 
+</select></td></tr>
 <tr><td><b>Door Threshold (cm): </b></td><td><input type='text' size=3 maxlength=4 id='dth' data-mini='true' value=0></td></tr>
 <tr><td><b>Vehicle Threshold (cm):</b><br><small>(Set to 0 to disable) </small></td><td><input type='text' size=3 maxlength=4 id='vth' data-mini='true' value=0 ></td></tr>
 <tr><td><b>Read Interval (s):</b></td><td><input type='text' size=3 maxlength=3 id='riv' data-mini='true' value=0></td></tr>
 <tr><td><b>Click Time (ms):</b></td><td><input type='text' size=3 maxlength=5 id='cdt' value=0 data-mini='true'></td></tr>
 <tr><td><b>Sound Alarm:</b></td><td>
-<select name='alm' id='alm' data-mini='true'>      
+<select name='alm' id='alm' data-mini='true'>
 <option value=0>Disabled</option>
-<option value=1>5 seconds</option>                  
-<option value=2>10 seconds</option>      
+<option value=1>5 seconds</option>
+<option value=2>10 seconds</option>
 </select></td></tr>
+<tr><td><b>Log Size:<a href='#lszInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Important note</a><div data-role='popup' id='lszInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>If you change log size, please Clear Log for the new size to take effect.</p></div></b></td><td>
+<select name='lsz' id='lsz' data-mini='true'>
+<option value=20>20</option>
+<option value=50>50</option>
+<option value=100>100</option>
+<option value=200>200</option>
+<option value=400>400</option>
+</select></td></tr>
+</tr>
 </table>
 </div>
 <div id='div_cloud' style='display:none;'>
@@ -338,11 +346,10 @@ const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta 
 <tr><td><b>Blynk Token:<a href='#BlynkInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Setup info</a><div data-role='popup' id='BlynkInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>Blynk provides remote access and monitoring. Install the app and use this QR to configure <a href='https://github.com/OpenGarage/OpenGarage-Firmware/blob/master/OGBlynkApp/og_blynk_1.0.png' target='_blank'>Blynk QR</a></p></div></b></td><td><input type='text' size=20 maxlength=32 id='auth' data-mini='true' value='-'></td></tr>
 <tr><td><b>IFTTT Key:<a href='#ifttInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='ifttInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p><a href='https://ifttt.com' target='_blank'>IFTTT</a> provides additional notification options (e.g. SMS, email) besides Blynk.</p></div></b></td><td><input type='text' size=20 maxlength=64 id='iftt' data-mini='true' value='-'></td></tr>
 <tr><td><b>MQTT Server:<a href='#mqttInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='mqttInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>MQTT provides additional workflow options through tools like NodeRed (e.g. SMS, email).</p></div></b></td><td><input type='text' size=16 maxlength=20 id='mqtt' data-mini='true' value=''></td></tr>
-</table> 
+</table>
 <table>
 <tr><td colspan=4><b>Choose Notifications:</b></td></tr>
-<tr><td><input type='checkbox' id='noto0' data-mini='true'><label for='noto0'>Door<br> Open</label></td><td><input type='checkbox' id='noto1' data-mini='true' ><label for='noto1'>Door<br> Close</label></td>
-<td><input type='checkbox' id='noto2' data-mini='true' disabled><label for='noto2'>Vehicle<br> Leave</label></td><td><input type='checkbox' id='noto3' data-mini='true' disabled ><label for='noto3'>Vehicle<br> Arrive</label></td></tr>
+<tr><td><input type='checkbox' id='noto0' data-mini='true'><label for='noto0'>Door<br> Open</label></td><td><input type='checkbox' id='noto1' data-mini='true' ><label for='noto1'>Door<br> Close</label></td><td><input type='checkbox' id='noto2' data-mini='true' disabled><label for='noto2'>Vehicle<br> Leave</label></td><td><input type='checkbox' id='noto3' data-mini='true' disabled ><label for='noto3'>Vehicle<br> Arrive</label></td></tr>
 <tr><td colspan=4><b>Automation:</b></td></tr>
 <tr><td colspan=4></td></tr><tr><td colspan=4></td></tr>
 <tr><td colspan=4>If open for longer than:</td></tr>
@@ -378,11 +385,11 @@ const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta 
 </div>
 <div data-role='footer' data-theme='c'>
 <p>&nbsp; OpenGarage Firmware <label id='fwv'>-</label>&nbsp;<a href='update' target='_top' data-role='button' data-inline=true data-mini=true>Update</a></p>
-</div> 
+</div>
 </div>
 <script>
-function clear_msg() {$('#msg').text('');}  
-function disable_dth() {
+function clear_msg() {$('#msg').text('');}
+function disable_dth(){
 if (parseInt($('#mnt option:selected').val()) >1){
 $('#dth').textinput('disable'); 
 $('#vth').textinput('disable'); 
@@ -398,7 +405,7 @@ $('#ckey').textinput($(this).is(':checked')?'enable':'disable');
 $('#usi').click(function(e){
 $('#dvip').textinput($(this).is(':checked')?'enable':'disable');
 $('#gwip').textinput($(this).is(':checked')?'enable':'disable');
-$('#subn').textinput($(this).is(':checked')?'enable':'disable');      
+$('#subn').textinput($(this).is(':checked')?'enable':'disable');
 });
 function toggle_opt() {
 $('#div_basic').hide();
@@ -420,6 +427,7 @@ comm+='&dth='+$('#dth').val();
 comm+='&vth='+$('#vth').val();
 comm+='&riv='+$('#riv').val();
 comm+='&alm='+$('#alm').val();
+comm+='&lsz='+$('#lsz').val();
 comm+='&htp='+$('#htp').val();
 comm+='&cdt='+$('#cdt').val();
 comm+='&ati='+$('#ati').val();
@@ -454,7 +462,7 @@ if(jd.result!=1) {
 if(jd.result==2) show_msg('Check device key and try again.');
 else show_msg('Error code: '+jd.result+', item: '+jd.item);
 } else {
-$('#msg').html('<font color=green>Options are successfully saved. Note that<br>changes to some options may require a reboot.</font>');
+$('#msg').html('<font color=green>Options are saved. Some options may need<br>a reboot to take effect. If you changed log<br>size, please Clear Log for it to take effect.</font>');
 setTimeout(goback, 4000);
 }
 });
@@ -464,6 +472,7 @@ $(document).ready(function() {
 $.getJSON('jo', function(jd) {
 $('#fwv').text('v'+(jd.fwv/100>>0)+'.'+(jd.fwv/10%10>>0)+'.'+(jd.fwv%10>>0));
 $('#alm').val(jd.alm).selectmenu('refresh');
+$('#lsz').val(jd.lsz).selectmenu('refresh');
 $('#mnt').val(jd.mnt).selectmenu('refresh');
 if(jd.mnt>1) $('#dth').textinput('disable'); 
 if(jd.mnt>0) $('#vth').textinput('disable'); 
@@ -487,7 +496,7 @@ $('#subn').val(jd.subn);
 if(jd.usi>0) $('#usi').attr('checked',true).checkboxradio('refresh');
 $('#dvip').textinput(jd.usi>0?'enable':'disable');
 $('#gwip').textinput(jd.usi>0?'enable':'disable');
-$('#subn').textinput(jd.usi>0?'enable':'disable');      
+$('#subn').textinput(jd.usi>0?'enable':'disable'); 
 });
 });
 </script>

@@ -24,7 +24,7 @@
 #define _DEFINES_H
 
 /** Firmware version, hardware version, and maximal values */
-#define OG_FWV    109   // Firmware version: 108 means 1.0.8
+#define OG_FWV    110   // Firmware version: 108 means 1.0.8
 
 /** GPIO pins */
 #define PIN_RELAY  15 //D8 on nodemcu
@@ -81,6 +81,17 @@
 #define BLYNK_PIN_DIST  V3
 #define BLYNK_PIN_CAR   V4
 #define BLYNK_PIN_IP    V5
+#define BLYNK_PIN_JC    V6
+#define BLYNK_PIN_CC    V7
+#define BLYNK_PIN_JO    V8
+#define BLYNK_PIN_CO    V9
+#define BLYNK_PIN_JL    V10
+
+enum {
+  DIRTY_BIT_JC = 0,
+  DIRTY_BIT_JO,
+  DIRTY_BIT_JL
+};
 
 #define DEFAULT_LOG_SIZE    100
 #define MAX_LOG_SIZE       500
@@ -138,17 +149,19 @@ typedef enum {
 
 #define TIME_SYNC_TIMEOUT  1800 //Issues connecting to MQTT can throw off the time function, sync more often
 
+#define TMP_BUFFER_SIZE 100
+
 /** Serial debug functions */
-//#define SERIAL_DEBUG
+#define SERIAL_DEBUG
+#define DEBUG_BEGIN(x)   { Serial.begin(x); }
+
 #if defined(SERIAL_DEBUG)
 
-  #define DEBUG_BEGIN(x)   { Serial.begin(x); }
   #define DEBUG_PRINT(x)   Serial.print(x)
   #define DEBUG_PRINTLN(x) Serial.println(x)
 
 #else
 
-  #define DEBUG_BEGIN(x)   { Serial.begin(x); }
   #define DEBUG_PRINT(x)   {}
   #define DEBUG_PRINTLN(x) {}
 

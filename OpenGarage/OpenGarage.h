@@ -48,6 +48,7 @@ public:
   static byte state;
   static byte alarm;
   static byte led_reverse;
+  static byte dirty_bits;
   static void begin();
   static void options_setup();
   static void options_load();
@@ -66,6 +67,13 @@ public:
     set_relay(HIGH);
     delay(options[OPTION_CDT].ival);
     set_relay(LOW);
+  }
+  static void set_dirty_bit(byte bit, byte value) {
+    if(value==0) dirty_bits &= ~(1<<bit);
+    else dirty_bits |= (1<<bit);
+  }
+  static byte get_dirty_bit(byte bit) {
+    return (dirty_bits >> bit) & 1;
   }
   static int find_option(String name);
   static void log_reset();

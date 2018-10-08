@@ -39,7 +39,6 @@ DNSServer *dns = NULL;
 
 WidgetLED blynk_door(BLYNK_PIN_DOOR);
 WidgetLED blynk_car(BLYNK_PIN_CAR);
-WidgetLCD blynk_lcd(BLYNK_PIN_LCD);
 
 static Ticker led_ticker;
 static Ticker aux_ticker;
@@ -68,12 +67,52 @@ static HTTPClient http;
 
 void do_setup();
 
+byte findKeyVal (const char *str, const char *key, char *strbuf=NULL, uint8_t maxlen=0) {
+  uint8_t found=0;
+  uint8_t i=0;
+  const char *kp;
+  kp=key;
+  while(*str &&  *str!=' ' && *str!='\n' && found==0){
+    if (*str == *kp){
+      kp++;
+      if (*kp == '\0'){
+        str++;
+        kp=key;
+        if (*str == '='){
+            found=1;
+        }
+      }
+    } else {
+      kp=key;
+    }
+    str++;
+  }
+  if(strbuf==NULL) return found; // if output buffer not provided, return right away
+
+  if (found==1){
+    // copy the value to a buffer and terminate it with '\0'
+    while(*str &&  *str!=' ' && *str!='\n' && *str!='&' && i<maxlen-1){
+      *strbuf=*str;
+      i++;
+      str++;
+      strbuf++;
+    }
+    if (!(*str) ||  *str == ' ' || *str == '\n' || *str == '&') {
+      *strbuf = '\0';
+    } else {
+      found = 0;  // Ignore partial values i.e. value length is larger than maxlen
+      i = 0;
+    }
+  }
+  return(i); // return the length of the value
+}
+
 void server_send_html(String html) {
-  server->sendHeader("Access-Control-Allow-Origin", "*"); // from esp8266 2.4 this has to be sent explicitly
   server->send(200, "text/html", html);
 }
 
 void server_send_json(String json) {
+  server->sendHeader("Access-Control-Allow-Origin", "*"); // from esp8266 2.4 this has to be sent explicitly
   server->send(200, "application/json", json);
 }
 
@@ -86,6 +125,10 @@ void server_send_result(byte code, const char* item = NULL) {
   json += F("\"");
   json += F("}");
   server_send_json(json);
+}
+
+void server_send_result(const char* command, byte code, const char* item = NULL) {
+  if(!command) server_send_result(code, item);
 }
 
 bool get_value_by_key(const char* key, uint& val) {
@@ -103,6 +146,37 @@ bool get_value_by_key(const char* key, String& val) {
     return true;
   } else {
     return false;
+  }
+}
+
+bool findArg(const char *command, const char *name) {
+  if(command) {
+    return findKeyVal(command, name);
+    // todo
+  } else {
+    return server->hasArg(name);
+  }
+}
+
+char tmp_buffer[TMP_BUFFER_SIZE];
+
+bool get_value_by_key(const char *command, const char *key, uint& val) {
+  if(command) {
+    byte ret = findKeyVal(command, key, tmp_buffer, TMP_BUFFER_SIZE);
+    val = String(tmp_buffer).toInt();
+    return ret;
+  } else {
+    return get_value_by_key(key, val);
+  }
+}
+
+bool get_value_by_key(const char *command, const char *key, String& val) {
+  if(command) {
+    byte ret = findKeyVal(command, key, tmp_buffer, TMP_BUFFER_SIZE);
+    val = String(tmp_buffer);
+    return ret;
+  } else {
+    return get_value_by_key(key, val);
   }
 }
 
@@ -228,9 +302,8 @@ String get_ip() {
   return ip;
 }
 
-void on_sta_controller() {
-  if(curr_mode == OG_MOD_AP) return;
-  String json = "";
+void sta_controller_fill_json(String& json) {
+  json = "";
   json += F("{\"dist\":");
   json += distance;
   json += F(",\"door\":");
@@ -250,6 +323,12 @@ void on_sta_controller() {
   json += F(",\"rssi\":");
   json += (int16_t)WiFi.RSSI();
   json += F("}");
+}
+
+void on_sta_controller() {
+  if(curr_mode == OG_MOD_AP) return;
+  String json;
+  sta_controller_fill_json(json);
   server_send_json(json);
 }
 
@@ -278,9 +357,8 @@ void on_sta_debug() {
   server_send_json(json);
 }
 
-void on_sta_logs() {
-  if(curr_mode == OG_MOD_AP) return;
-  String json = "";
+void sta_logs_fill_json(String& json) {
+  json = "";
   json += F("{\"name\":\"");
   json += og.options[OPTION_NAME].sval;
   json += F("\",\"time\":");
@@ -306,6 +384,12 @@ void on_sta_logs() {
   og.read_log_end();
   json.remove(json.length()-1); // remove the extra ,
   json += F("]}");
+}
+
+void on_sta_logs() {
+  if(curr_mode == OG_MOD_AP) return;
+  String json;
+  sta_logs_fill_json(json);
   server_send_json(json);
 }
 
@@ -313,6 +397,11 @@ bool verify_device_key() {
   if(server->hasArg("dkey") && (server->arg("dkey") == og.options[OPTION_DKEY].sval))
     return true;
   return false;
+}
+
+bool verify_device_key(const char* command) {
+  if(command) return true;
+  else return verify_device_key();
 }
 
 void on_reset_all(){
@@ -334,22 +423,21 @@ void on_clear_log() {
   server_send_result(HTML_SUCCESS);  
 }
 
-void on_test(){
-  //server_send_html(scanned_ssids);
-}
-
-void on_sta_change_controller() {
+void sta_change_controller_main(const char *command) {
   if(curr_mode == OG_MOD_AP) return;
 
-  if(!verify_device_key()) {
-    server_send_result(HTML_UNAUTHORIZED);
+  if(!verify_device_key(command)) {
+    server_send_result(command, HTML_UNAUTHORIZED);
     return;
   }
-  if(server->hasArg("click") || server->hasArg("close") || server->hasArg("open"))  {
-    DEBUG_PRINTLN(F("Received locally generated button request (click, close, or open)"));
-    server_send_result(HTML_SUCCESS);
+
+  if(findArg(command, "click") || findArg(command, "close") || findArg(command, "open")) {
+    DEBUG_PRINTLN(F("Received button request (click, close, or open)"));
+    server_send_result(command, HTML_SUCCESS);
     //1 is open
-    if ((server->hasArg("close") && door_status) || (server->hasArg("open") && !door_status) || (server->hasArg("click"))) {
+    if ((findArg(command, "close") && door_status) ||
+        (findArg(command, "open") && !door_status) ||
+        (findArg(command, "click"))) {
       DEBUG_PRINTLN(F("Valid command recieved based on door status"));
       if(!og.options[OPTION_ALM].ival) {
         // if alarm is not enabled, trigger relay right away
@@ -361,25 +449,31 @@ void on_sta_change_controller() {
     }else{
       DEBUG_PRINTLN(F("Command request not valid, door already in requested state"));
     }
-  } else if(server->hasArg("reboot")) {
-    server_send_result(HTML_SUCCESS);
+  } else if(findArg(command, "reboot")) {
+    server_send_result(command, HTML_SUCCESS);
     //restart_ticker.once_ms(1000, og.restart);
     restart_in(1000);
-  } else if(server->hasArg("apmode")) {
-    server_send_result(HTML_SUCCESS);
+  } else if(findArg(command, "apmode")) {
+    server_send_result(command, HTML_SUCCESS);
     og.reset_to_ap();
   } else {
-    server_send_result(HTML_NOT_PERMITTED);
+    server_send_result(command, HTML_NOT_PERMITTED);
   }
+
 }
 
-void on_sta_change_options() {
+void on_sta_change_controller() {
+  sta_change_controller_main(NULL);  
+}
+
+void sta_change_options_main(const char *command) {
   if(curr_mode == OG_MOD_AP) return;
-  
-  if(!verify_device_key()) {
-    server_send_result(HTML_UNAUTHORIZED);
+
+  if(!verify_device_key(command)) {
+    server_send_result(command, HTML_UNAUTHORIZED);
     return;
   }
+
   uint ival = 0;
   String sval;
   byte i;
@@ -396,18 +490,18 @@ void on_sta_change_options() {
       continue;
     
     if(o->max) {  // integer options
-      if(get_value_by_key(key, ival)) {
+      if(get_value_by_key(command, key, ival)) {
         if(ival>o->max) {
-          server_send_result(HTML_DATA_OUTOFBOUND, key);
+          server_send_result(command, HTML_DATA_OUTOFBOUND, key);
           return;
         }
         if(i==OPTION_LSZ && ival < 20) {
           // minimal log size is 20
-          server_send_result(HTML_DATA_OUTOFBOUND, key);
+          server_send_result(command, HTML_DATA_OUTOFBOUND, key);
         }
         if(i==OPTION_CDT && ival < 50) {
           // click delay time should be at least 50 ms
-          server_send_result(HTML_DATA_OUTOFBOUND, key);
+          server_send_result(command, HTML_DATA_OUTOFBOUND, key);
           return;
         }
         if(i==OPTION_USI && ival==1) {
@@ -424,24 +518,24 @@ void on_sta_change_options() {
   const char* _gwip = "gwip";
   const char* _subn = "subn";
   if(usi) {
-    if(get_value_by_key(_dvip, dvip)) {
-      if(get_value_by_key(_gwip, gwip)) {
+    if(get_value_by_key(command, _dvip, dvip)) {
+      if(get_value_by_key(command, _gwip, gwip)) {
         // check validity of IP address
         IPAddress ip;
-        if(!ip.fromString(dvip)) {server_send_result(HTML_DATA_FORMATERROR, _dvip); return;}
-        if(!ip.fromString(gwip)) {server_send_result(HTML_DATA_FORMATERROR, _gwip); return;}
-        if(get_value_by_key(_subn, subn)) {
+        if(!ip.fromString(dvip)) {server_send_result(command, HTML_DATA_FORMATERROR, _dvip); return;}
+        if(!ip.fromString(gwip)) {server_send_result(command, HTML_DATA_FORMATERROR, _gwip); return;}
+        if(get_value_by_key(command, _subn, subn)) {
           if(!ip.fromString(subn)) {
-            server_send_result(HTML_DATA_FORMATERROR, _subn);
+            server_send_result(command, HTML_DATA_FORMATERROR, _subn);
             return;
           }
         }
       } else {
-        server_send_result(HTML_DATA_MISSING, _gwip);
+        server_send_result(command, HTML_DATA_MISSING, _gwip);
         return;
       }              
     } else {
-      server_send_result(HTML_DATA_MISSING, _dvip);
+      server_send_result(command, HTML_DATA_MISSING, _dvip);
       return;
     }
   }
@@ -450,14 +544,14 @@ void on_sta_change_options() {
   const char* _nkey = "nkey";
   const char* _ckey = "ckey";
   
-  if(get_value_by_key(_nkey, nkey)) {
-    if(get_value_by_key(_ckey, ckey)) {
+  if(get_value_by_key(command, _nkey, nkey)) {
+    if(get_value_by_key(command, _ckey, ckey)) {
       if(!nkey.equals(ckey)) {
-        server_send_result(HTML_MISMATCH, _ckey);
+        server_send_result(command, HTML_MISMATCH, _ckey);
         return;
       }
     } else {
-      server_send_result(HTML_DATA_MISSING, _ckey);
+      server_send_result(command, HTML_DATA_MISSING, _ckey);
       return;
     }
   }
@@ -472,37 +566,40 @@ void on_sta_change_options() {
       continue;
     
     if(o->max) {  // integer options
-      if(get_value_by_key(key, ival)) {
+      if(get_value_by_key(command, key, ival)) {
         o->ival = ival;
       }
     } else {
-      if(get_value_by_key(key, sval)) {
+      if(get_value_by_key(command, key, sval)) {
         o->sval = sval;
       }
     }
   }
 
   if(usi) {
-    get_value_by_key(_dvip, dvip);
-    get_value_by_key(_gwip, gwip);
+    get_value_by_key(command, _dvip, dvip);
+    get_value_by_key(command, _gwip, gwip);
     og.options[OPTION_DVIP].sval = dvip;
     og.options[OPTION_GWIP].sval = gwip;
-    if(get_value_by_key(_subn, subn)) {
+    if(get_value_by_key(command, _subn, subn)) {
       og.options[OPTION_SUBN].sval = subn;
     }
   }
   
-  if(get_value_by_key(_nkey, nkey)) {
+  if(get_value_by_key(command, _nkey, nkey)) {
       og.options[OPTION_DKEY].sval = nkey;
   }
 
   og.options_save();
-  server_send_result(HTML_SUCCESS);
+  server_send_result(command, HTML_SUCCESS);
 }
 
-void on_sta_options() {
-  if(curr_mode == OG_MOD_AP) return;
-  String json = "{";
+void on_sta_change_options() {
+  sta_change_options_main(NULL);
+}
+
+void sta_options_fill_json(String& json) {
+  json = "{";
   OptionStruct *o = og.options;
   for(byte i=0;i<NUM_OPTIONS;i++,o++) {
     if(!o->max) {
@@ -527,6 +624,12 @@ void on_sta_options() {
   }
   json.remove(json.length()-1); // remove the extra ,
   json += F("}");
+}
+
+void on_sta_options() {
+  if(curr_mode == OG_MOD_AP) return;
+  String json;
+  sta_options_fill_json(json);
   server_send_json(json);
 }
 
@@ -961,7 +1064,7 @@ void check_status() {
   static ulong checkstatus_report_timeout = 0; 
   if((curr_utc_time > checkstatus_timeout) || (checkstatus_timeout == 0))  { //also check on first boot
     og.set_led(HIGH);
-    aux_ticker.once_ms(100, og.set_led, (byte)LOW);
+    aux_ticker.once_ms(25, og.set_led, (byte)LOW);
     uint threshold = og.options[OPTION_DTH].ival;
     uint vthreshold = og.options[OPTION_VTH].ival;
     if ((og.options[OPTION_MNT].ival == OG_MNT_SIDE) || (og.options[OPTION_MNT].ival == OG_MNT_CEILING)){
@@ -1090,19 +1193,6 @@ void check_status() {
       else if(event == DOOR_STATUS_REMAIN_CLOSED) {	
         DEBUG_PRINTLN(F(" Sending State Refresh to connected systems, value: CLOSED")); }
 #endif
-      // report status to Blynk
-      if(curr_cloud_access_en && Blynk.connected()) {
-        DEBUG_PRINTLN(F(" Update Blynk (State Refresh)"));
-        Blynk.virtualWrite(BLYNK_PIN_DIST, distance);
-        (door_status) ? blynk_door.on() : blynk_door.off();
-        (vehicle_status==1) ? blynk_car.on() : blynk_car.off();
-        Blynk.virtualWrite(BLYNK_PIN_IP, get_ip());
-        blynk_lcd.print(0, 0, get_ip());
-        String str = ":";
-        str += og.options[OPTION_HTP].ival;
-        str += " " + get_ap_ssid();
-        blynk_lcd.print(0, 1, str);
-      }
       
       //IFTTT only recieves state change events not ongoing status
 
@@ -1125,6 +1215,42 @@ void check_status() {
     }
     
     // Process dynamics: automation and notifications
+    // report status to Blynk
+    if(curr_cloud_access_en && Blynk.connected()) {
+      DEBUG_PRINTLN(F(" Update Blynk (State Refresh)"));
+      
+      static uint old_distance = 0;
+      static byte old_door_status = 0xff, old_vehicle_status = 0xff;
+      static String old_ip = "";
+      if(distance != old_distance) {  Blynk.virtualWrite(BLYNK_PIN_DIST, distance); old_distance = distance; }
+      if(door_status != old_door_status) { (door_status) ? blynk_door.on() : blynk_door.off(); old_door_status = door_status; }
+      if(vehicle_status != old_vehicle_status) { (vehicle_status==1) ? blynk_car.on() : blynk_car.off(); old_vehicle_status = vehicle_status; }
+      if(old_ip != get_ip()) { Blynk.virtualWrite(BLYNK_PIN_IP, get_ip()); old_ip = get_ip(); }
+      /*blynk_lcd.print(0, 0, get_ip());
+      String str = ":";
+      str += og.options[OPTION_HTP].ival;
+      str += " " + get_ap_ssid();
+      blynk_lcd.print(0, 1, str);*/
+
+      // report json strings to Blynk
+      String json;
+      static String old_json = "";
+      sta_controller_fill_json(json);
+      if(old_json != json) { Blynk.virtualWrite(BLYNK_PIN_JC, json); old_json = json; }
+      
+      if(og.get_dirty_bit(DIRTY_BIT_JO)) {
+        sta_options_fill_json(json);
+        Blynk.virtualWrite(BLYNK_PIN_JO, json);
+        og.set_dirty_bit(DIRTY_BIT_JO, 0);
+      }
+      
+      if(og.get_dirty_bit(DIRTY_BIT_JL)) {
+        sta_logs_fill_json(json);
+        Blynk.virtualWrite(BLYNK_PIN_JL, json);
+        og.set_dirty_bit(DIRTY_BIT_JL, 0);
+      }
+    }
+    
     process_dynamics(event);
     checkstatus_timeout = curr_utc_time + og.options[OPTION_RIV].ival;
     
@@ -1247,7 +1373,6 @@ void do_loop() {
       server->on("/jo", on_sta_options);
       server->on("/jl", on_sta_logs);
       server->on("/vo", on_sta_view_options);
-      //server->serveStatic("/sta_options.html", SPIFFS, "/sta_options.html");
       server->on("/vl", on_sta_view_logs);
       server->on("/cc", on_sta_change_controller);
       server->on("/co", on_sta_change_options);
@@ -1255,13 +1380,7 @@ void do_loop() {
       server->on("/update", HTTP_GET, on_sta_update);
       server->on("/update", HTTP_POST, on_sta_upload_fin, on_sta_upload);
       server->on("/clearlog", on_clear_log);
-      /*server->serveStatic("/DoorOpen.png", SPIFFS, "/DoorOpen.png","max-age=86400");
-      server->serveStatic("/DoorShut.png", SPIFFS, "/DoorShut.png","max-age=86400");
-      server->serveStatic("/ClosedAbsent.png", SPIFFS, "/ClosedAbsent.png","max-age=86400");
-      server->serveStatic("/ClosedPresent.png", SPIFFS, "/ClosedPresent.png","max-age=86400");
-      server->serveStatic("/Open.png", SPIFFS, "/Open.png","max-age=86400");*/
       server->on("/resetall",on_reset_all);
-      //server->on("/test",on_test);
       server->begin();
       DEBUG_PRINTLN(F("Web Server endpoints (STA mode) registered"));
 
@@ -1354,8 +1473,7 @@ void do_loop() {
     process_alarm();
 }
 
-BLYNK_WRITE(V1)
-{
+BLYNK_WRITE(BLYNK_PIN_RELAY) {
   DEBUG_PRINTLN(F("Received Blynk generated button request"));
   if(!og.options[OPTION_ALM].ival) {
     // if alarm is disabled, trigger right away
@@ -1372,3 +1490,14 @@ BLYNK_WRITE(V1)
   }
 }
 
+BLYNK_WRITE(BLYNK_PIN_CC) {
+  DEBUG_PRINTLN(F("Received Blynk cc request"));
+  DEBUG_PRINTLN(param.asStr());
+  sta_change_controller_main(param.asStr());
+}
+
+BLYNK_WRITE(BLYNK_PIN_CO) {
+  DEBUG_PRINTLN(F("Received Blynk co request"));
+  DEBUG_PRINTLN(param.asStr());  
+  sta_change_options_main(param.asStr());
+}

@@ -26,6 +26,7 @@ byte  OpenGarage::state = OG_STATE_INITIAL;
 File  OpenGarage::log_file;
 byte  OpenGarage::alarm = 0;
 byte  OpenGarage::led_reverse = 0;
+byte  OpenGarage::dirty_bits = 0xFF;
 Ticker ud_ticker;
 
 static const char* config_fname = CONFIG_FNAME;
@@ -245,6 +246,7 @@ void OpenGarage::options_save() {
   }
   DEBUG_PRINTLN(F("ok"));  
   file.close();
+  set_dirty_bit(DIRTY_BIT_JO, 1);
 }
 
 uint OpenGarage::read_distance() {
@@ -314,6 +316,7 @@ void OpenGarage::write_log(const LogStruct& data) {
   }
   DEBUG_PRINTLN(F("ok"));      
   file.close();
+  set_dirty_bit(DIRTY_BIT_JL, 1);
 }
 
 bool OpenGarage::read_log_start() {

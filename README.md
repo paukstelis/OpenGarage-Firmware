@@ -10,18 +10,22 @@ For Firmware release notes, go to [https://github.com/OpenGarage/OpenGarage-Firm
 
 #### Requirement:
 
-* Arduino (https://arduino.cc) with ESP8266 core 2.3 or above for Arduino (https://github.com/esp8266/Arduino)
-* Instead of installing Arduino, you can also directly use **makeESPArduino** (https://github.com/plerup/makeEspArduino)
+* Arduino (https://arduino.cc) with ESP8266 core 2.4.1 or above for Arduino (https://github.com/esp8266/Arduino/releases/tag/2.4.1)
+* Instead of installing Arduino, you can also directly use make (this folder includes a copy of **makeESPArduino**: https://github.com/plerup/makeEspArduino)
 * Blynk library for Arduino (https://github.com/blynkkk/blynk-library)
-* MQTT PubSUbClient https://github.com/Imroy/pubsubclient
+* MQTT PubSUbClient https://github.com/Imroy/pubsubclient/releases
+* AM2320 library: https://github.com/hibikiledo/AM2320/releases
+* OneWire library: https://www.pjrc.com/teensy/td_libs_OneWire.html
+* DallasTemperature library: https://github.com/milesburton/Arduino-Temperature-Control-Library/releases
+* DHTesp library: https://github.com/beegee-tokyo/DHTesp/releases
+
 * This (OpenGarage) library
 
 #### Setting up a Dev Environment
 
-* Install Arduino with ESP8266 core 2.3 or above, or alternatively, install makeESPArduino
-* Install Blynk library and pubsubclient library refrenced above (IMroy version)
+* Install Arduino with ESP8266 core 2.4.1 (or use make directly, following https://github.com/plerup/makeEspArduino).
+* Install Arduino libraries referenced above.
 * Download this repository and extract the OpenGarage library to your Arduino's `libraries` folder.
-* Follow the README.txt in the Modifications folder to modify Update.h in your ESP8266 core files.
 
 #### Compilation
 
@@ -31,7 +35,8 @@ To compile using Arduino: launch Arduino, and select
 
 * File -> Examples -> OpenGarage -> mainArduino.
 * Tools -> Board -> Generic ESP8266 Module (if this is not available, check if you've installed the ESP8266 core).
-* Tools -> Flash Size -> 4M (1M SPIFFS).
+* Tools -> Flash Mode -> DIO.
+* Tools -> Flash Size -> 2M (1M SPIFFS).
 
 Press Ctrl + R to compile. The compiled firmware (named mainArduino.cpp.bin) is by default copied to a temporary folder.
 

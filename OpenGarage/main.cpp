@@ -52,6 +52,8 @@ static String scanned_ssids;
 static byte read_cnt = 0;
 static uint distance = 0;
 static uint vdistance = 0;
+static float tempC = 0;
+static float humid = 0;
 static byte door_status = 0; //0 down, 1 up
 static int vehicle_status = 0; //0 No, 1 Yes, 2 Unknown (door open), 3 Option Disabled
 static bool curr_cloud_access_en = false;
@@ -107,8 +109,10 @@ byte findKeyVal (const char *str, const char *key, char *strbuf=NULL, uint8_t ma
   return(i); // return the length of the value
 }
 
-void server_send_html(String html) {
-  server->send(200, "text/html", html);
+void server_send_html_P(PGM_P content) {
+  server->send_P(200, PSTR("text/html"), content);
+  DEBUG_PRINT(strlen_P(content));
+  DEBUG_PRINTLN(F(" bytes sent."));
 }
 
 void server_send_json(String json) {
@@ -230,29 +234,21 @@ void restart_in(uint32_t ms) {
 
 void on_home()
 {
-  String html = "";
-  
   if(curr_mode == OG_MOD_AP) {
-
-    html = FPSTR(ap_home_html);
+    server_send_html_P(ap_home_html);
   } else {
-    html = FPSTR(sta_home_html);
+    server_send_html_P(sta_home_html);
   }
-  server_send_html(html);
 }
 
 void on_sta_view_options() {
   if(curr_mode == OG_MOD_AP) return;
-  String html = FPSTR(sta_options_html);
-  //server->send(200, "text/html", html);
-  server_send_html(html);
-  DEBUG_PRINTLN(F("Complete sending page"));
+  server_send_html_P(sta_options_html);
 }
 
 void on_sta_view_logs() {
   if(curr_mode == OG_MOD_AP) return;
-  String html = FPSTR(sta_logs_html);
-  server_send_html(html);
+  server_send_html_P(sta_logs_html);
 }
 
 char dec2hexchar(byte dec) {
@@ -322,6 +318,12 @@ void sta_controller_fill_json(String& json) {
   json += ESP.getChipId();
   json += F(",\"rssi\":");
   json += (int16_t)WiFi.RSSI();
+  if(og.options[OPTION_TSN].ival) {
+  	json += F(",\"temp\":");
+  	json += tempC;
+  	json += F(",\"humid\":");
+  	json += humid;
+  }
   json += F("}");
 }
 
@@ -491,13 +493,19 @@ void sta_change_options_main(const char *command) {
     
     if(o->max) {  // integer options
       if(get_value_by_key(command, key, ival)) {
-        if(ival>o->max) {
+        if(ival>o->max) {	// check max limit
           server_send_result(command, HTML_DATA_OUTOFBOUND, key);
           return;
+        }
+        // check min limit
+        if(i==OPTION_DRI && ival < 50) {
+        	server_send_result(command,HTML_DATA_OUTOFBOUND, key);
+        	return;
         }
         if(i==OPTION_LSZ && ival < 20) {
           // minimal log size is 20
           server_send_result(command, HTML_DATA_OUTOFBOUND, key);
+          return;
         }
         if(i==OPTION_CDT && ival < 50) {
           // click delay time should be at least 50 ms
@@ -635,7 +643,7 @@ void on_sta_options() {
 
 void on_ap_scan() {
   if(curr_mode == OG_MOD_STA) return;
-  server_send_html(scanned_ssids);
+  server_send_json(scanned_ssids);
 }
 
 void on_ap_change_config() {
@@ -676,14 +684,14 @@ void on_ap_try_connect() {
 }
 
 void on_ap_debug() {
-  String html = "";
-  html += F("{");
-  html += F("\"dist\":");
-  html += og.read_distance();
-  html += F(",\"fwv\":");
-  html += og.options[OPTION_FWV].ival;
-  html += F("}");
-  server_send_html(html);
+  String json = "";
+  json += F("{");
+  json += F("\"dist\":");
+  json += og.read_distance();
+  json += F(",\"fwv\":");
+  json += og.options[OPTION_FWV].ival;
+  json += F("}");
+  server_send_json(json);
 }
 
 // MQTT callback to read "Button" requests
@@ -739,6 +747,7 @@ void do_setup()
   WiFi.persistent(false); // turn off persistent, fixing flash crashing issue
   og.begin();
   og.options_setup();
+  og.init_sensors();
   if(og.get_mode() == OG_MOD_AP) og.play_startup_tune();
   DEBUG_PRINT(F("Complile Info: "));
   DEBUG_PRINT(F(__DATE__));
@@ -811,6 +820,8 @@ byte check_door_status_hist() {
   const byte highones= lowones << (DOOR_STATUS_HIST_K/2); // 0b1100
   
   byte _hist = door_status_hist & allones;  // get the lowest K bits
+  DEBUG_PRINTLN(door_status_hist);
+  DEBUG_PRINTLN(_hist);
   if(_hist == 0) return DOOR_STATUS_REMAIN_CLOSED;
   if(_hist == allones) return DOOR_STATUS_REMAIN_OPEN;
   if(_hist == lowones) return DOOR_STATUS_JUST_OPENED;
@@ -820,13 +831,11 @@ byte check_door_status_hist() {
 }
 
 void on_sta_update() {
-  String html = FPSTR(sta_update_html);
-  server_send_html(html);
+  server_send_html_P(sta_update_html);
 }
 
 void on_ap_update() {
-  String html = FPSTR(ap_update_html);
-  server_send_html(html);
+  server_send_html_P(ap_update_html);
 }
 
 void on_sta_upload_fin() {
@@ -1108,6 +1117,8 @@ void check_status() {
       }
     }
     read_cnt = (read_cnt+1)%100;
+    // get temperature readings
+    og.read_TH_sensor(tempC, humid);
     if (checkstatus_timeout == 0){
       DEBUG_PRINTLN(F("First time checking status don't trigger a status change, set full history to current value"));
       if (door_status) { door_status_hist = B11111111; }
@@ -1226,13 +1237,9 @@ void check_status() {
       if(door_status != old_door_status) { (door_status) ? blynk_door.on() : blynk_door.off(); old_door_status = door_status; }
       if(vehicle_status != old_vehicle_status) { (vehicle_status==1) ? blynk_car.on() : blynk_car.off(); old_vehicle_status = vehicle_status; }
       if(old_ip != get_ip()) { Blynk.virtualWrite(BLYNK_PIN_IP, get_ip()); old_ip = get_ip(); }
-      /*blynk_lcd.print(0, 0, get_ip());
-      String str = ":";
-      str += og.options[OPTION_HTP].ival;
-      str += " " + get_ap_ssid();
-      blynk_lcd.print(0, 1, str);*/
 
       // report json strings to Blynk
+      /* comment this section out as the features are not fully ready yet
       String json;
       static String old_json = "";
       sta_controller_fill_json(json);
@@ -1249,6 +1256,7 @@ void check_status() {
         Blynk.virtualWrite(BLYNK_PIN_JL, json);
         og.set_dirty_bit(DIRTY_BIT_JL, 0);
       }
+      */
     }
     
     process_dynamics(event);
@@ -1491,13 +1499,17 @@ BLYNK_WRITE(BLYNK_PIN_RELAY) {
 }
 
 BLYNK_WRITE(BLYNK_PIN_CC) {
+  /* comment this section out as the features are not fully ready yet
   DEBUG_PRINTLN(F("Received Blynk cc request"));
   DEBUG_PRINTLN(param.asStr());
   sta_change_controller_main(param.asStr());
+  */
 }
 
 BLYNK_WRITE(BLYNK_PIN_CO) {
+	/* comment this section out as the features are not fully ready yet
   DEBUG_PRINTLN(F("Received Blynk co request"));
   DEBUG_PRINTLN(param.asStr());  
   sta_change_options_main(param.asStr());
+  */
 }

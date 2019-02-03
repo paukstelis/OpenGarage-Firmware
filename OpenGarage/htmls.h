@@ -134,13 +134,14 @@ const char sta_home_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta nam
 <div data-role='page' id='page_home'><div data-role='header'><h3 id='head_name'>OG</h3></div>
 <div data-role='content'><div data-role='fieldcontain'>
 <table><tr><td><b>Door&nbsp;State:<br></td><td><label id='lbl_status'>-</label></td>
-<td rowspan="2"><img id='pic' src='' style='width:112px;height:64px;'></td>
+<td rowspan='2'><img id='pic' src='' style='width:112px;height:64px;'></td>
 </tr><tr><td><b><label id='lbl_vstatus1'>Vehicle&nbsp;State:&nbsp</label></b></td>
 <td><label id='lbl_vstatus'>-</label></td></tr>
 <tr><td><b>Distance:</b></td><td><label id='lbl_dist'>-</label></td><td></td></tr>
 <tr><td><b>Read&nbsp;Count:</b></td><td><label id='lbl_beat'>-</label></td><td></td></tr>
-<tr><td><b>WiFi&nbsp;Signal:</b></td><td colspan="2"><label id='lbl_rssi'>-</label></td></tr>
-<tr><td><b>Device&nbsp;Key:</b></td><td colspan="2" ><input type='password' size=20 maxlength=32 name='dkey' id='dkey'></td></tr>
+<tr><td><b>WiFi&nbsp;Signal:</b></td><td colspan='2'><label id='lbl_rssi'>-</label></td></tr>
+<tr id='tbl_th' style='display:none;'><td><b>T/H sensor:</b></td><td colspan='2'><label id='lbl_th'>-</label></td></tr>
+<tr><td><b>Device&nbsp;Key:</b></td><td colspan='2' ><input type='password' size=20 maxlength=32 name='dkey' id='dkey'></td></tr>
 <tr><td colspan=3><label id='msg'></label></td></tr>
 </table><br />
 <div data-role='controlgroup' data-type='horizontal'>
@@ -157,7 +158,7 @@ const char sta_home_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta nam
 </div>
 </div>
 <div data-role='footer' data-theme='c'>
-<p>&nbsp; OpenGarage Firmware <label id='fwv'>-</label>&nbsp;<a href='update' target='_top' data-role='button' data-inline=true data-mini=true>Update</a></p>
+<p>&nbsp; OpenGarage Firmware v<label id='fwv'>-</label><div data-role='controlgroup' data-type='horizontal'><a href='update' target='_top' data-role='button' data-inline=true data-mini=true>Firmware Update</a><a href='https://nbviewer.jupyter.org/github/OpenGarage/OpenGarage-Firmware/blob/master/docs/OGManual.pdf' target='_blank' data-role='button' data-inline=true data-mini=true>User Manual</a></p></div>
 </div>
 </div>
 <script>
@@ -219,7 +220,7 @@ $('#msg').text('Request Failed: ' + err).css('color','red');
 $(document).ready(function() { show(); si=setInterval('show()', 5000); });
 function show() {
 $.getJSON('jc', function(jd) {
-$('#fwv').text('v'+(jd.fwv/100>>0)+'.'+(jd.fwv/10%10>>0)+'.'+(jd.fwv%10>>0));
+$('#fwv').text((jd.fwv/100>>0)+'.'+(jd.fwv/10%10>>0)+'.'+(jd.fwv%10>>0));
 $('#lbl_dist').text(jd.dist +' (cm)').css('color', jd.dist==450?'red':'black');
 $('#lbl_status').text(jd.door?'OPEN':'CLOSED').css('color',jd.door?'red':'green'); 
 //Hide or Show vehicle info
@@ -240,6 +241,8 @@ $('#lbl_beat').text(jd.rcnt);
 $('#lbl_rssi').text((jd.rssi>-71?'Good':(jd.rssi>-81?'Weak':'Poor')) +' ('+ jd.rssi +' dBm)');
 $('#head_name').text(jd.name);
 $('#btn_click').html(jd.door?'Close Door':'Open Door').button('refresh');
+if(typeof(jd.temp)!='undefined') {$('#tbl_th').show(); $('#lbl_th').text(jd.temp.toFixed(1)+String.fromCharCode(176)+'C / '+(jd.temp*1.8+32).toFixed(1)+String.fromCharCode(176)+'F (H:'+jd.humid.toFixed(1)+'%)');}
+else {$('#tbl_th').hide();}
 });
 }
 </script>
@@ -301,7 +304,7 @@ setTimeout(show_log, 10000);
 )";
 const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta name='viewport' content='width=device-width, initial-scale=1'><link rel='stylesheet' href='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.css' type='text/css'><script src='http://code.jquery.com/jquery-1.9.1.min.js' type='text/javascript'></script><script src='http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js' type='text/javascript'></script></head>
 <body>
-<style> table, th, td { border: 0px solid black; padding: 1px; border-collapse: collapse; } </style>
+<style> table, th, td { border: 0px solid black; padding: 1px; border-collapse: collapse; } .ui-select{width:160px;}</style>
 <div data-role='page' id='page_opts'>
 <div data-role='header'><h3>Edit Options</h3></div>
 <div data-role='content'>
@@ -313,17 +316,24 @@ const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta 
 <div id='div_basic'>
 <table cellpadding=2>
 <tr><td><b>Device Name:</b></td><td><input type='text' size=10 maxlength=32 id='name' data-mini='true' value='-'></td></tr>
-<tr><td><b>Sensor Type:</b></td><td>
+<tr><td><b>Door Sensor:</b></td><td>
 <select name='mnt' id='mnt' data-mini='true' onChange='disable_dth()'>
 <option value=0>Ceiling Mount</option>
 <option value=1>Side Mount</option>
-<option value=2>Switch (Low Mount)</option>
-<option value=3>Switch (High Mount)</option>
+<option value=2>Norm. Closed Switch on G04</option>
+<option value=3>Norm. Open Switch on G04</option>
 </select></td></tr>
-<tr><td><b>Door Threshold (cm): </b></td><td><input type='text' size=3 maxlength=4 id='dth' data-mini='true' value=0></td></tr>
-<tr><td><b>Vehicle Threshold (cm):</b><br><small>(Set to 0 to disable) </small></td><td><input type='text' size=3 maxlength=4 id='vth' data-mini='true' value=0 ></td></tr>
+<tr><td><b>Door Thres. (cm): </b></td><td><input type='text' size=3 maxlength=4 id='dth' data-mini='true' value=0></td></tr>
+<tr><td><b>Car Thres. (cm):</b><br><small>(Set 0 to disable) </small></td><td><input type='text' size=3 maxlength=4 id='vth' data-mini='true' value=0 ></td></tr>
 <tr><td><b>Read Interval (s):</b></td><td><input type='text' size=3 maxlength=3 id='riv' data-mini='true' value=0></td></tr>
 <tr><td><b>Click Time (ms):</b></td><td><input type='text' size=3 maxlength=5 id='cdt' value=0 data-mini='true'></td></tr>
+<tr><td><b>Dist. Read (ms):</b></td><td><input type='text' size=3 maxlength=5 id='dri' value=0 data-mini='true'></td></tr>
+<tr><td><b>Sensor Timeout:</b></td><td>
+<fieldset data-role='controlgroup' data-mini='true' data-type='horizontal'>
+<input type='radio' name='rd_to' id='to_ignore' value=0><label for='to_ignore'>Ignore</label>
+<input type='radio' name='rd_to' id='to_cap' value=1><label for='to_cap'>Cap</label>
+</fieldset>
+</td></tr>
 <tr><td><b>Sound Alarm:</b></td><td>
 <select name='alm' id='alm' data-mini='true'>
 <option value=0>Disabled</option>
@@ -338,16 +348,23 @@ const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta 
 <option value=200>200</option>
 <option value=400>400</option>
 </select></td></tr>
-</tr>
+<tr><td><b>T/H Sensor:</b></td><td>
+<select name='tsn' id='tsn' data-mini='true'>
+<option value=0>(none)</option>
+<option value=1>AM2320 (I2C)</option>
+<option value=2>DHT11 on G05</option>
+<option value=3>DHT22 on G05</option>
+<option value=4>DS18B20 on G05</option>
+</select></td></tr>
 </table>
 </div>
 <div id='div_cloud' style='display:none;'>
 <table cellpadding=1>
-<tr><td><b>Blynk Token:<a href='#BlynkInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Setup info</a><div data-role='popup' id='BlynkInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>Blynk provides remote access and monitoring. Install the app and use this QR to configure <a href='https://github.com/OpenGarage/OpenGarage-Firmware/blob/master/OGBlynkApp/og_blynk_1.0.png' target='_blank'>Blynk QR</a></p></div></b></td><td><input type='text' size=20 maxlength=32 id='auth' data-mini='true' value='-'></td></tr>
-<tr><td><b>Blynk Domain:<a href='#BlynkDomainInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='BlynkDomainInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>Specify a domain for a private Blynk server or use the default Blynk cloud option: blynk-cloud.com</p></div></b></td><td><input type='text' size=20 maxlength=32 id='bdmn' data-mini='true' value='-'></td></tr>
-<tr><td><b>Blynk Port:<a href='#BlynkPortInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='BlynkPortInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>Specify a port for a private Blynk server or use the default Blynk cloud option: 80</p></div></b></td><td><input type='text' size=5 maxlength=5 id='bprt' data-mini='true' value=0></td></tr>
-<tr><td><b>IFTTT Key:<a href='#ifttInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='ifttInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p><a href='https://ifttt.com' target='_blank'>IFTTT</a> provides additional notification options (e.g. SMS, email) besides Blynk.</p></div></b></td><td><input type='text' size=20 maxlength=64 id='iftt' data-mini='true' value='-'></td></tr>
-<tr><td><b>MQTT Server:<a href='#mqttInfo' data-rel='popup' data-role='button' data-inline='true' data-transition='pop' data-icon='info' data-theme='c' data-iconpos='notext'>Learn more</a><div data-role='popup' id='mqttInfo' class='ui-content' data-theme='b' style='max-width:320px;'><p>MQTT provides additional workflow options through tools like NodeRed (e.g. SMS, email).</p></div></b></td><td><input type='text' size=16 maxlength=20 id='mqtt' data-mini='true' value=''></td></tr>
+<tr><td><b>Blynk Token:</b></td><td><input type='text' size=20 maxlength=32 id='auth' data-mini='true' value='-'></td></tr>
+<tr><td><b>Blynk Domain:</b></td><td><input type='text' size=20 maxlength=32 id='bdmn' data-mini='true' value='-'></td></tr>
+<tr><td><b>Blynk Port:</b></td><td><input type='text' size=5 maxlength=5 id='bprt' data-mini='true' value=0></td></tr>
+<tr><td><b>IFTTT Key:</b></td><td><input type='text' size=20 maxlength=64 id='iftt' data-mini='true' value='-'></td></tr>
+<tr><td><b>MQTT Server:</b></td><td><input type='text' size=16 maxlength=20 id='mqtt' data-mini='true' value=''></td></tr>
 </table>
 <table>
 <tr><td colspan=4><b>Choose Notifications:</b></td></tr>
@@ -380,13 +397,13 @@ const char sta_options_html[] PROGMEM = R"(<head><title>OpenGarage</title><meta 
 </table>
 <div data-role='controlgroup' data-type='horizontal'>
 <a href='#' data-role='button' data-inline='true' data-theme='a' id='btn_back'>Back</a>
-<a href='#' data-role='button' data-inline='true' data-theme='b' id='btn_submit'>Submit</a>      
+<a href='#' data-role='button' data-inline='true' data-theme='b' id='btn_submit'>Submit</a> 
 </div>
 <table>
 </table>
 </div>
 <div data-role='footer' data-theme='c'>
-<p>&nbsp; OpenGarage Firmware <label id='fwv'>-</label>&nbsp;<a href='update' target='_top' data-role='button' data-inline=true data-mini=true>Update</a></p>
+<p>&nbsp; OpenGarage Firmware v<label id='fwv'>-</label><div data-role='controlgroup' data-type='horizontal'><a href='update' target='_top' data-role='button' data-inline=true data-mini=true>Firmware Update</a><a href='https://nbviewer.jupyter.org/github/OpenGarage/OpenGarage-Firmware/blob/master/docs/OGManual.pdf' target='_blank' data-role='button' data-inline=true data-mini=true>User Manual</a></p></div>
 </div>
 </div>
 <script>
@@ -430,8 +447,11 @@ comm+='&vth='+$('#vth').val();
 comm+='&riv='+$('#riv').val();
 comm+='&alm='+$('#alm').val();
 comm+='&lsz='+$('#lsz').val();
+comm+='&tsn='+$('#tsn').val();
 comm+='&htp='+$('#htp').val();
 comm+='&cdt='+$('#cdt').val();
+comm+='&dri='+$('#dri').val();
+comm+='&sto='+eval_cb('#to_cap');
 comm+='&ati='+$('#ati').val();
 comm+='&atib='+$('#atib').val();
 var ato=0;
@@ -466,7 +486,7 @@ if(jd.result!=1) {
 if(jd.result==2) show_msg('Check device key and try again.');
 else show_msg('Error code: '+jd.result+', item: '+jd.item);
 } else {
-$('#msg').html('<font color=green>Options are saved. Some options may need<br>a reboot to take effect. If you changed log<br>size, please Clear Log for it to take effect.</font>');
+$('#msg').html('<font color=green>Options are saved. Many options may need<br>a reboot to take effect. If you changed log<br>size, please Clear Log for it to take effect.</font>');
 setTimeout(goback, 4000);
 }
 });
@@ -474,9 +494,10 @@ setTimeout(goback, 4000);
 });
 $(document).ready(function() {
 $.getJSON('jo', function(jd) {
-$('#fwv').text('v'+(jd.fwv/100>>0)+'.'+(jd.fwv/10%10>>0)+'.'+(jd.fwv%10>>0));
+$('#fwv').text((jd.fwv/100>>0)+'.'+(jd.fwv/10%10>>0)+'.'+(jd.fwv%10>>0));
 $('#alm').val(jd.alm).selectmenu('refresh');
 $('#lsz').val(jd.lsz).selectmenu('refresh');
+$('#tsn').val(jd.tsn).selectmenu('refresh');
 $('#mnt').val(jd.mnt).selectmenu('refresh');
 if(jd.mnt>1) $('#dth').textinput('disable'); 
 if(jd.mnt>0) $('#vth').textinput('disable'); 
@@ -485,6 +506,9 @@ $('#vth').val(jd.vth);
 $('#riv').val(jd.riv);
 $('#htp').val(jd.htp);
 $('#cdt').val(jd.cdt);
+$('#dri').val(jd.dri);
+if(jd.sto) $('#to_cap').attr('checked',true).checkboxradio('refresh');
+else $('#to_ignore').attr('checked',true).checkboxradio('refresh');
 $('#ati').val(jd.ati);
 $('#atib').val(jd.atib);
 for(var i=0;i<=1;i++) {if(jd.ato&(1<<i)) $('#ato'+i).attr('checked',true).checkboxradio('refresh');}
@@ -525,8 +549,10 @@ const char sta_update_html[] PROGMEM = R"(<head>
 <tr><td><b>Device key: </b><input type='password' name='dkey' size=16 maxlength=16 id='dkey'></td></tr>
 <tr><td><label id='msg'></label></td></tr>
 </table>
+<div data-role='controlgroup' data-type='horizontal'>    
 <a href='#' data-role='button' data-inline='true' data-theme='a' id='btn_back'>Back</a>
 <a href='#' data-role='button' data-inline='true' data-theme='b' id='btn_submit'>Submit</a>
+</div>
 </form>
 </div>
 </div>

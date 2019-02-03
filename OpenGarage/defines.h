@@ -34,7 +34,8 @@
 #define PIN_LED     2
 #define PIN_RESET  16
 #define PIN_BUZZER 13
-#define PIN_SWITCH 4  //D2 on nodemcu
+#define PIN_SWITCH  4 //switch sensor: D2 on nodemcu
+#define PIN_TH      5 //temeprature sensor: D1 on nodemcu
 
 // Default device name
 #define DEFAULT_NAME    "My OpenGarage"
@@ -53,6 +54,12 @@
 #define OG_ALM_NONE     0x00
 #define OG_ALM_5        0x01
 #define OG_ALM_10       0x02
+
+#define OG_TSN_NONE     0x00
+#define OG_TSN_AM2320   0x01
+#define OG_TSN_DHT11    0x02
+#define OG_TSN_DHT22    0x03
+#define OG_TSN_DS18B20  0x04
 
 #define OG_MOD_AP       0xA9
 #define OG_MOD_STA      0x2A
@@ -113,8 +120,11 @@ typedef enum {
   OPTION_RIV,     // read interval
   OPTION_ALM,     // alarm mode
   OPTION_LSZ,     // log size
+  OPTION_TSN,     // temperature sensor type
   OPTION_HTP,     // http port
   OPTION_CDT,     // click delay time
+  OPTION_DRI,			// distance read interval
+  OPTION_STO,			// sensor timeout option
   OPTION_MOD,     // mode
   OPTION_ATI,     // automation interval (in minutes)
   OPTION_ATO,     // automation options
@@ -152,7 +162,7 @@ typedef enum {
 #define TMP_BUFFER_SIZE 100
 
 /** Serial debug functions */
-#define SERIAL_DEBUG
+//#define SERIAL_DEBUG
 #define DEBUG_BEGIN(x)   { Serial.begin(x); }
 
 #if defined(SERIAL_DEBUG)

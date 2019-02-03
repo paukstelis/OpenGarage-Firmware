@@ -32,6 +32,11 @@ Ticker ud_ticker;
 static const char* config_fname = CONFIG_FNAME;
 static const char* log_fname = LOG_FNAME;
 
+OneWire* OpenGarage::oneWire = NULL;
+DallasTemperature* OpenGarage::ds18b20 = NULL;
+AM2320* OpenGarage::am2320 = NULL;
+DHTesp* OpenGarage::dht = NULL;
+extern OpenGarage og;
 /* Options name, default integer value, max value, default string value
  * Integer options don't have string value
  * String options don't have integer or max value
@@ -44,20 +49,23 @@ OptionStruct OpenGarage::options[] = {
   {"riv", 5,           300, ""},
   {"alm", OG_ALM_5,      2, ""},
   {"lsz", DEFAULT_LOG_SIZE,400,""},
+  {"tsn", OG_TSN_NONE, 255, ""},
   {"htp", 80,        65535, ""},
   {"cdt", 1000,       5000, ""},
+  {"dri", 500,        3000, ""},
+  {"sto", 0,             1, ""},
   {"mod", OG_MOD_AP,   255, ""},
   {"ati", 30,          720, ""},
   {"ato", OG_AUTO_NONE,255, ""},
-  {"atib", 3,          24, ""},
+  {"atib", 3,           24, ""},
   {"atob", OG_AUTO_NONE,255, ""},
   {"noto", OG_NOTIFY_DO|OG_NOTIFY_DC,255, ""},
   {"usi", 0,             1, ""},
   {"ssid", 0, 0, ""},  // string options have 0 max value
   {"pass", 0, 0, ""},
   {"auth", 0, 0, ""},
-  {"bdmn", 0,            0, "blynk-cloud.com"},
-  {"bprt", 80,       65535, ""},
+  {"bdmn", 0, 0, "blynk-cloud.com"},
+  {"bprt", 80,65535, ""},
   {"dkey", 0, 0, DEFAULT_DKEY},
   {"name", 0, 0, DEFAULT_NAME},
   {"iftt", 0, 0, ""},
@@ -81,8 +89,8 @@ void ud_start_trigger() {
   delayMicroseconds(2);
   digitalWrite(PIN_TRIG, HIGH);
   delayMicroseconds(20);
-  digitalWrite(PIN_TRIG, LOW);
   triggered = true;
+  digitalWrite(PIN_TRIG, LOW);
 }
 
 ICACHE_RAM_ATTR void ud_isr() {
@@ -95,12 +103,19 @@ ICACHE_RAM_ATTR void ud_isr() {
     // ECHO pin went from high to low
     triggered = false;
     ud_buffer[ud_i] = micros() - ud_start; // calculate elapsed time
-    if(ud_buffer[ud_i]>26233L) ud_buffer[ud_i] = 26233L;  // clamp time value
-    ud_i = (ud_i+1)%KAVG; // circular buffer
-    if(ud_i==0) fullbuffer=true;
-    /*if(ud_i) {  // we want to read KAVG times consecutively
-      ud_start_trigger();
-    }*/
+    if(ud_buffer[ud_i]>26000L) {
+    	// timedout
+    	if(og.options[OPTION_STO].ival==0) {
+    		// ignore
+    		return;
+    	} else {
+    		// cap to max
+	    	ud_buffer[ud_i]=26000L;
+    	}
+    } else {
+		  ud_i = (ud_i+1)%KAVG; // circular buffer
+	    if(ud_i==0) fullbuffer=true;
+		}
   }
 }
 
@@ -150,10 +165,6 @@ void OpenGarage::begin() {
   if(!SPIFFS.begin()) {
     DEBUG_PRINTLN(F("failed to mount file system!"));
   }
-
-  // setup ticker
-  ud_ticker.attach_ms(250, ud_ticker_cb);
-  attachInterrupt(PIN_ECHO, ud_isr, CHANGE);
 }
 
 void OpenGarage::options_setup() {
@@ -272,6 +283,67 @@ uint OpenGarage::read_distance() {
     buf[in] = temp;   
   }  
   return (uint)(buf[KAVG/2]*0.01716f);  // 34320 cm / 2 / 10^6 s
+}
+
+void OpenGarage::init_sensors() {
+  // set up distance sensors
+  ud_ticker.attach_ms(options[OPTION_DRI].ival, ud_ticker_cb);
+  attachInterrupt(PIN_ECHO, ud_isr, CHANGE);
+
+  switch(options[OPTION_TSN].ival) {
+  case OG_TSN_AM2320:
+    am2320 = new AM2320();
+    am2320->begin();
+    break;
+  case OG_TSN_DHT11:
+    dht = new DHTesp();
+    dht->setup(PIN_TH, DHTesp::DHT11);
+    break;
+  case OG_TSN_DHT22:
+    dht = new DHTesp();
+    dht->setup(PIN_TH, DHTesp::DHT22);    
+    break;
+
+  case OG_TSN_DS18B20:
+    oneWire = new OneWire(PIN_TH);
+    ds18b20 = new DallasTemperature(oneWire);
+    ds18b20->begin();
+    break;
+  }
+}
+
+void OpenGarage::read_TH_sensor(float& C, float& H) {
+	float v;
+  switch(options[OPTION_TSN].ival) {
+  case OG_TSN_AM2320:
+    if(am2320) {
+      if(am2320->measure()) {
+      	v = am2320->getTemperature();
+      	if(!isnan(v)) C=v;
+        v = am2320->getHumidity();
+        if(!isnan(v)) H=v;
+      }
+    }
+    break;
+  case OG_TSN_DHT11:
+  case OG_TSN_DHT22:
+    if(dht) {
+      TempAndHumidity th = dht->getTempAndHumidity();
+      v = th.temperature;
+      if(!isnan(v)) C=v;
+      v = th.humidity;
+      if(!isnan(v)) H=v;
+    }
+    break;
+
+  case OG_TSN_DS18B20:
+    if(ds18b20) {
+      ds18b20->requestTemperatures();
+      v=ds18b20->getTempCByIndex(0);
+      if(!isnan(v)) C=v;
+    }
+    break;
+  }
 }
 
 bool OpenGarage::get_cloud_access_en() {

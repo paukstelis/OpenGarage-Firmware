@@ -4,13 +4,14 @@
 <div data-role='page' id='page_home'><div data-role='header'><h3 id='head_name'>OG</h3></div>
 <div data-role='content'><div data-role='fieldcontain'>
 <table><tr><td><b>Door&nbsp;State:<br></td><td><label id='lbl_status'>-</label></td>
-<td rowspan="2"><img id='pic' src='' style='width:112px;height:64px;'></td>
+<td rowspan='2'><img id='pic' src='' style='width:112px;height:64px;'></td>
 </tr><tr><td><b><label id='lbl_vstatus1'>Vehicle&nbsp;State:&nbsp</label></b></td>
 <td><label id='lbl_vstatus'>-</label></td></tr>
 <tr><td><b>Distance:</b></td><td><label id='lbl_dist'>-</label></td><td></td></tr>
 <tr><td><b>Read&nbsp;Count:</b></td><td><label id='lbl_beat'>-</label></td><td></td></tr>
-<tr><td><b>WiFi&nbsp;Signal:</b></td><td colspan="2"><label id='lbl_rssi'>-</label></td></tr>
-<tr><td><b>Device&nbsp;Key:</b></td><td colspan="2" ><input type='password' size=20 maxlength=32 name='dkey' id='dkey'></td></tr>
+<tr><td><b>WiFi&nbsp;Signal:</b></td><td colspan='2'><label id='lbl_rssi'>-</label></td></tr>
+<tr id='tbl_th' style='display:none;'><td><b>T/H sensor:</b></td><td colspan='2'><label id='lbl_th'>-</label></td></tr>
+<tr><td><b>Device&nbsp;Key:</b></td><td colspan='2' ><input type='password' size=20 maxlength=32 name='dkey' id='dkey'></td></tr>
 <tr><td colspan=3><label id='msg'></label></td></tr>
 </table><br />
 <div data-role='controlgroup' data-type='horizontal'>
@@ -27,7 +28,7 @@
 </div>
 </div>
 <div data-role='footer' data-theme='c'>
-<p>&nbsp; OpenGarage Firmware <label id='fwv'>-</label>&nbsp;<a href='update' target='_top' data-role='button' data-inline=true data-mini=true>Update</a></p>
+<p>&nbsp; OpenGarage Firmware v<label id='fwv'>-</label><div data-role='controlgroup' data-type='horizontal'><a href='update' target='_top' data-role='button' data-inline=true data-mini=true>Firmware Update</a><a href='https://nbviewer.jupyter.org/github/OpenGarage/OpenGarage-Firmware/blob/master/docs/OGManual.pdf' target='_blank' data-role='button' data-inline=true data-mini=true>User Manual</a></p></div>
 </div>
 </div>
 <script>
@@ -89,7 +90,7 @@ var comm = 'cc?click=1&dkey='+($('#dkey').val());
 $(document).ready(function() { show(); si=setInterval('show()', 5000); });
 function show() {
   $.getJSON('jc', function(jd) {
-    $('#fwv').text('v'+(jd.fwv/100>>0)+'.'+(jd.fwv/10%10>>0)+'.'+(jd.fwv%10>>0));
+    $('#fwv').text((jd.fwv/100>>0)+'.'+(jd.fwv/10%10>>0)+'.'+(jd.fwv%10>>0));
     $('#lbl_dist').text(jd.dist +' (cm)').css('color', jd.dist==450?'red':'black');
     $('#lbl_status').text(jd.door?'OPEN':'CLOSED').css('color',jd.door?'red':'green'); 
     //Hide or Show vehicle info
@@ -110,6 +111,8 @@ function show() {
     $('#lbl_rssi').text((jd.rssi>-71?'Good':(jd.rssi>-81?'Weak':'Poor')) +' ('+ jd.rssi +' dBm)');
     $('#head_name').text(jd.name);
     $('#btn_click').html(jd.door?'Close Door':'Open Door').button('refresh');
+    if(typeof(jd.temp)!='undefined') {$('#tbl_th').show(); $('#lbl_th').text(jd.temp.toFixed(1)+String.fromCharCode(176)+'C / '+(jd.temp*1.8+32).toFixed(1)+String.fromCharCode(176)+'F (H:'+jd.humid.toFixed(1)+'%)');}
+    else {$('#tbl_th').hide();}
   });
 }
 </script>

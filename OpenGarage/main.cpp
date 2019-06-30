@@ -444,6 +444,9 @@ void sta_change_controller_main(const char *command) {
       if(!og.options[OPTION_ALM].ival) {
         // if alarm is not enabled, trigger relay right away
         og.click_relay();
+      } else if(og.options[OPTION_AOO].ival && !door_status) {
+      	// if 'Do not alarm on open' is on, and door is about to be open, no alarm needed
+      	og.click_relay();
       } else {
         // else, set alarm
         og.set_alarm();
@@ -521,10 +524,11 @@ void sta_change_options_main(const char *command) {
   }
   
   // Check device IP and gateway IP changes
-  String dvip, gwip, subn;
+  String dvip, gwip, subn, dns1;
   const char* _dvip = "dvip";
   const char* _gwip = "gwip";
   const char* _subn = "subn";
+  const char* _dns1 = "dns1";
   if(usi) {
     if(get_value_by_key(command, _dvip, dvip)) {
       if(get_value_by_key(command, _gwip, gwip)) {
@@ -537,6 +541,12 @@ void sta_change_options_main(const char *command) {
             server_send_result(command, HTML_DATA_FORMATERROR, _subn);
             return;
           }
+        }
+        if(get_value_by_key(command, _dns1, dns1)) {
+        	if(!ip.fromString(dns1)) {
+            server_send_result(command, HTML_DATA_FORMATERROR, _dns1);
+            return;
+        	}
         }
       } else {
         server_send_result(command, HTML_DATA_MISSING, _gwip);
@@ -591,6 +601,9 @@ void sta_change_options_main(const char *command) {
     og.options[OPTION_GWIP].sval = gwip;
     if(get_value_by_key(command, _subn, subn)) {
       og.options[OPTION_SUBN].sval = subn;
+    }
+    if(get_value_by_key(command, _dns1, dns1)) {
+    	og.options[OPTION_DNS1].sval = dns1;
     }
   }
   
@@ -707,8 +720,10 @@ void mqtt_callback(const MQTT::Publish& pub) {
     if(!og.options[OPTION_ALM].ival) {
       // if alarm is not enabled, trigger relay right away
       og.click_relay();
-    } 
-	  else {
+    } else if(og.options[OPTION_AOO].ival && !door_status) {
+      // if 'Do not alarm on open' is on, and door is about to be open, no alarm needed
+      og.click_relay();
+	  } else {
       // else, set alarm
       og.set_alarm();
     }
@@ -722,8 +737,10 @@ void mqtt_callback(const MQTT::Publish& pub) {
       if(!og.options[OPTION_ALM].ival) {
         // if alarm is not enabled, trigger relay right away
         og.click_relay();
-      } 
-      else {
+      } else if(og.options[OPTION_AOO].ival && !door_status) {
+      	// if 'Do not alarm on open' is on, and door is about to be open, no alarm needed
+      	og.click_relay();
+	    } else {
         // else, set alarm
         og.set_alarm();
       }
@@ -820,8 +837,6 @@ byte check_door_status_hist() {
   const byte highones= lowones << (DOOR_STATUS_HIST_K/2); // 0b1100
   
   byte _hist = door_status_hist & allones;  // get the lowest K bits
-  DEBUG_PRINTLN(door_status_hist);
-  DEBUG_PRINTLN(_hist);
   if(_hist == 0) return DOOR_STATUS_REMAIN_CLOSED;
   if(_hist == allones) return DOOR_STATUS_REMAIN_OPEN;
   if(_hist == lowones) return DOOR_STATUS_JUST_OPENED;
@@ -1351,6 +1366,7 @@ void do_loop() {
       led_blink_ms = LED_SLOW_BLINK;
       DEBUG_PRINT(F("Attempting to connect to SSID: "));
       DEBUG_PRINTLN(og.options[OPTION_SSID].sval.c_str());
+      WiFi.mode(WIFI_STA);
       start_network_sta(og.options[OPTION_SSID].sval.c_str(), og.options[OPTION_PASS].sval.c_str());
       og.config_ip();
       og.state = OG_STATE_CONNECTING;
@@ -1372,10 +1388,6 @@ void do_loop() {
       DEBUG_PRINT(F("Wireless connected, IP: "));
       DEBUG_PRINTLN(WiFi.localIP());
 
-      // use ap ssid as mdns name
-      if(MDNS.begin(get_ap_ssid().c_str())) {
-        DEBUG_PRINTLN(F("MDNS registered"));
-      }
       server->on("/", on_home);
       server->on("/jc", on_sta_controller);
       server->on("/jo", on_sta_options);
@@ -1391,6 +1403,14 @@ void do_loop() {
       server->on("/resetall",on_reset_all);
       server->begin();
       DEBUG_PRINTLN(F("Web Server endpoints (STA mode) registered"));
+
+      // use ap ssid as mdns name
+      if(MDNS.begin(get_ap_ssid().c_str(), WiFi.localIP())) {
+        DEBUG_PRINTLN(F("MDNS registered"));
+        DEBUG_PRINTLN(get_ap_ssid().c_str());
+        //MDNS.addService("http", "tcp", og.options[OPTION_HTP].ival);
+				//DEBUG_PRINTLN(og.options[OPTION_HTP].ival);
+      }
 
       if(curr_cloud_access_en) {
         Blynk.config(og.options[OPTION_AUTH].sval.c_str(), og.options[OPTION_BDMN].sval.c_str(), (uint16_t) og.options[OPTION_BPRT].ival); // use the config function
@@ -1446,6 +1466,7 @@ void do_loop() {
       
     } else {
       if(WiFi.status() == WL_CONNECTED) {
+      	//MDNS.update();
         time_keeping();
         check_status(); //This checks the door, sends info to services and processes the automation rules
         server->handleClient();
@@ -1493,7 +1514,13 @@ BLYNK_WRITE(BLYNK_PIN_RELAY) {
   } else {
     // otherwise, set alarm
     if(param.asInt()) {
-      og.set_alarm();
+      if(!og.options[OPTION_ALM].ival) {
+        og.set_alarm(OG_ALM_5);
+      } else if(og.options[OPTION_AOO].ival && !door_status) {
+      	og.click_relay();
+      } else {
+        og.set_alarm();
+      }    
     }  
   }
 }

@@ -24,7 +24,7 @@
 #define _DEFINES_H
 
 /** Firmware version, hardware version, and maximal values */
-#define OG_FWV    110   // Firmware version: 108 means 1.0.8
+#define OG_FWV    111   // Firmware version: 111 means 1.1.1
 
 /** GPIO pins */
 #define PIN_RELAY  15 //D8 on nodemcu
@@ -119,6 +119,7 @@ typedef enum {
   OPTION_VTH,     // distance threshold vehicle detection
   OPTION_RIV,     // read interval
   OPTION_ALM,     // alarm mode
+  OPTION_AOO,			// no alarm on opening
   OPTION_LSZ,     // log size
   OPTION_TSN,     // temperature sensor type
   OPTION_HTP,     // http port
@@ -144,6 +145,7 @@ typedef enum {
   OPTION_DVIP,    // device IP
   OPTION_GWIP,    // gateway IP
   OPTION_SUBN,    // subnet
+  OPTION_DNS1,		// dns1 IP
   NUM_OPTIONS     // number of options
 } OG_OPTION_enum;
 

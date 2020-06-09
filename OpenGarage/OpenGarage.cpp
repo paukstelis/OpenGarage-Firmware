@@ -32,16 +32,16 @@ Ticker ud_ticker;
 static const char* config_fname = CONFIG_FNAME;
 static const char* log_fname = LOG_FNAME;
 
-OneWire* OpenGarage::oneWire = NULL;
+/* OneWire* OpenGarage::oneWire = NULL;
 DallasTemperature* OpenGarage::ds18b20 = NULL;
 AM2320* OpenGarage::am2320 = NULL;
-DHTesp* OpenGarage::dht = NULL;
+DHTesp* OpenGarage::dht = NULL; */
 extern OpenGarage og;
 /* Options name, default integer value, max value, default string value
  * Integer options don't have string value
  * String options don't have integer or max value
  */
-OptionStruct OpenGarage::options[] = {
+RTC_DATA_ATTR OptionStruct OpenGarage::options[] = {
   {"fwv", OG_FWV,      255, ""},
   {"mnt", OG_MNT_CEILING,3, ""},
   {"dth", 50,        65535, ""},
@@ -74,7 +74,14 @@ OptionStruct OpenGarage::options[] = {
   {"dvip", 0, 0, "-.-.-.-"},
   {"gwip", 0, 0, "-.-.-.-"},
   {"subn", 0, 0, "255.255.255.0"},
-  {"dns1", 0, 0, "8.8.8.8"}
+  {"dns1", 0, 0, "8.8.8.8"},
+  {"admin_name", 0, 0, DEFAULT_NAME},
+  {"url", 0, 0, ""},
+  {"bldg", 0, 0, ""},
+  {"room", 0, 0, ""},
+  {"occup", 1, 300, ""},
+  {"admin_read", 0, 1, ""},
+  {"admin_api", 0, 0, DEFAULT_DKEY} 
 };
 
 /* Variables and functions for handling Ultrasonic Distance sensor */
@@ -129,8 +136,10 @@ void OpenGarage::begin() {
   digitalWrite(PIN_RESET, HIGH);
   pinMode(PIN_RESET, OUTPUT);
   
+  ledcSetup(0, 500, 16);
   digitalWrite(PIN_BUZZER, LOW);
   pinMode(PIN_BUZZER, OUTPUT);
+  ledcAttachPin(PIN_BUZZER, 0);
   
   digitalWrite(PIN_RELAY, LOW);
   pinMode(PIN_RELAY, OUTPUT);
@@ -163,7 +172,7 @@ void OpenGarage::begin() {
   pinMode(PIN_SWITCH, INPUT_PULLUP);
   
   state = OG_STATE_INITIAL;
-  
+  //SPIFFS.begin(true);
   if(!SPIFFS.begin()) {
     DEBUG_PRINTLN(F("failed to mount file system!"));
   }
@@ -289,7 +298,7 @@ uint OpenGarage::read_distance() {
 
 void OpenGarage::init_sensors() {
   // set up distance sensors
-  ud_ticker.attach_ms(options[OPTION_DRI].ival, ud_ticker_cb);
+  /* ud_ticker.attach_ms(options[OPTION_DRI].ival, ud_ticker_cb);
   attachInterrupt(PIN_ECHO, ud_isr, CHANGE);
 
   switch(options[OPTION_TSN].ival) {
@@ -311,11 +320,11 @@ void OpenGarage::init_sensors() {
     ds18b20 = new DallasTemperature(oneWire);
     ds18b20->begin();
     break;
-  }
+  } */
 }
 
 void OpenGarage::read_TH_sensor(float& C, float& H) {
-	float v;
+/* 	float v;
   switch(options[OPTION_TSN].ival) {
   case OG_TSN_AM2320:
     if(am2320) {
@@ -345,7 +354,7 @@ void OpenGarage::read_TH_sensor(float& C, float& H) {
       if(!isnan(v)) C=v;
     }
     break;
-  }
+  } */
 }
 
 bool OpenGarage::get_cloud_access_en() {
@@ -416,11 +425,14 @@ bool OpenGarage::read_log_end() {
 }
 
 void OpenGarage::play_note(uint freq) {
-  if(freq>0) {
+   if(freq>0) {
+    /*
     analogWrite(PIN_BUZZER, 512);
     analogWriteFreq(freq);
+    */
+    ledcWrite(PIN_BUZZER, freq);
   } else {
-    analogWrite(PIN_BUZZER, 0);
+    ledcWrite(PIN_BUZZER, 0);
   }
 }
 

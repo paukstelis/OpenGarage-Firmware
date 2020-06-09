@@ -27,15 +27,18 @@
 #define OG_FWV    111   // Firmware version: 111 means 1.1.1
 
 /** GPIO pins */
-#define PIN_RELAY  15 //D8 on nodemcu
-#define PIN_BUTTON  0
-#define PIN_TRIG   12 //D6 on nodemcu
-#define PIN_ECHO   14 //D5 on nodemcu
-#define PIN_LED     2
-#define PIN_RESET  16
-#define PIN_BUZZER 13
-#define PIN_SWITCH  4 //switch sensor: D2 on nodemcu
-#define PIN_TH      5 //temeprature sensor: D1 on nodemcu
+#define PIN_RELAY   15 //D8 on nodemcu
+#define PIN_BUTTON  27
+#define PIN_TRIG    12 //D6 on nodemcu
+#define PIN_ECHO    14 //D5 on nodemcu
+#define PIN_LED      2
+#define PIN_RESET   16
+#define PIN_BUZZER  17
+#define PIN_SWITCH  18 //switch sensor: D2 on nodemcu
+#define PIN_TH      22 //temeprature sensor: D1 on nodemcu
+#define RFSDA_PIN   21
+#define RFRST_PIN   22
+#define PIN_PIR     33
 
 // Default device name
 #define DEFAULT_NAME    "My OpenGarage"
@@ -82,7 +85,7 @@
 #define OG_STATE_WAIT_RESTART   4
 #define OG_STATE_RESET          9
 
-#define BLYNK_PIN_DOOR  V0
+/* #define BLYNK_PIN_DOOR  V0
 #define BLYNK_PIN_RELAY V1
 #define BLYNK_PIN_LCD   V2
 #define BLYNK_PIN_DIST  V3
@@ -92,7 +95,7 @@
 #define BLYNK_PIN_CC    V7
 #define BLYNK_PIN_JO    V8
 #define BLYNK_PIN_CO    V9
-#define BLYNK_PIN_JL    V10
+#define BLYNK_PIN_JL    V10 */
 
 enum {
   DIRTY_BIT_JC = 0,
@@ -146,6 +149,13 @@ typedef enum {
   OPTION_GWIP,    // gateway IP
   OPTION_SUBN,    // subnet
   OPTION_DNS1,		// dns1 IP
+  OPTION_ANAM,    // admin_name
+  OPTION_URL,     // url
+  OPTION_BLDG,    // bldg
+  OPTION_ROOM,    // room
+  OPTION_OCCP,    // occup
+  OPTION_ARD,     // admin_read
+  OPTION_AAPI,    // admin_api 
   NUM_OPTIONS     // number of options
 } OG_OPTION_enum;
 
@@ -164,7 +174,7 @@ typedef enum {
 #define TMP_BUFFER_SIZE 100
 
 /** Serial debug functions */
-//#define SERIAL_DEBUG
+#define SERIAL_DEBUG
 #define DEBUG_BEGIN(x)   { Serial.begin(x); }
 
 #if defined(SERIAL_DEBUG)

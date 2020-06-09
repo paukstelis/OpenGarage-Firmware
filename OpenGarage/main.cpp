@@ -25,20 +25,20 @@
   #define BLYNK_PRINT Serial
 #endif
 
-#include <BlynkSimpleEsp8266.h>
+/* #include <BlynkSimpleEsp8266.h> */
 #include <DNSServer.h>
-#include <PubSubClient.h> //https://github.com/Imroy/pubsubclient
+/* #include <PubSubClient.h> //https://github.com/Imroy/pubsubclient */
 
 #include "pitches.h"
 #include "OpenGarage.h"
 #include "espconnect.h"
 
 OpenGarage og;
-ESP8266WebServer *server = NULL;
+WebServer *server = NULL;
 DNSServer *dns = NULL;
 
-WidgetLED blynk_door(BLYNK_PIN_DOOR);
-WidgetLED blynk_car(BLYNK_PIN_CAR);
+/* WidgetLED blynk_door(BLYNK_PIN_DOOR);
+WidgetLED blynk_car(BLYNK_PIN_CAR); */
 
 static Ticker led_ticker;
 static Ticker aux_ticker;
@@ -46,7 +46,7 @@ static Ticker ip_ticker;
 static Ticker restart_ticker;
 
 static WiFiClient wificlient;
-PubSubClient mqttclient(wificlient);
+/* PubSubClient mqttclient(wificlient); */
 
 static String scanned_ssids;
 static byte read_cnt = 0;
@@ -67,7 +67,16 @@ static ulong curr_utc_time = 0;
 static ulong curr_utc_hour= 0;
 static HTTPClient http;
 
+//OpenContacts
+#include <MFRC522.h>
+#include <SPI.h>
+
+MFRC522::MIFARE_Key key;
+MFRC522::StatusCode status;
+MFRC522 mfrc522(RFSDA_PIN, RFRST_PIN);
+
 void do_setup();
+void do_wake();
 
 byte findKeyVal (const char *str, const char *key, char *strbuf=NULL, uint8_t maxlen=0) {
   uint8_t found=0;
@@ -315,7 +324,7 @@ void sta_controller_fill_json(String& json) {
   json += F("\",\"mac\":\"");
   json += get_mac();
   json += F("\",\"cid\":");
-  json += ESP.getChipId();
+  json += ESP.getChipRevision();
   json += F(",\"rssi\":");
   json += (int16_t)WiFi.RSSI();
   if(og.options[OPTION_TSN].ival) {
@@ -346,7 +355,7 @@ void on_sta_debug() {
   json += F("\",\"mac\":\"");
   json += get_mac();
   json += F("\",\"cid\":");
-  json += ESP.getChipId();
+  json += ESP.getChipRevision();
   json += F(",\"rssi\":");
   json += (int16_t)WiFi.RSSI();
   json += F(",\"bssid\":\"");
@@ -664,9 +673,17 @@ void on_ap_change_config() {
   if(server->hasArg("ssid")&&server->arg("ssid").length()!=0) {
     og.options[OPTION_SSID].sval = server->arg("ssid");
     og.options[OPTION_PASS].sval = server->arg("pass");
+    og.options[OPTION_URL].sval = server->arg("url");
+    og.options[OPTION_BLDG].sval = server->arg("bldg");
+    og.options[OPTION_ROOM].sval = server->arg("room");
+    og.options[OPTION_ANAM].sval = server->arg("admin_name");
+    og.options[OPTION_ARD].ival = server->arg("admin_read").toInt();
+    og.options[OPTION_AAPI].sval = server->arg("admin_api");
+    og.options[OPTION_OCCP].ival = server->arg("occup").toInt();
+
     // if cloud token is provided, save it
-    if(server->hasArg("auth")&&server->arg("auth").length()!=0)
-      og.options[OPTION_AUTH].sval = server->arg("auth");
+    /* if(server->hasArg("auth")&&server->arg("auth").length()!=0)
+      og.options[OPTION_AUTH].sval = server->arg("auth"); */
     og.options_save();
     server_send_result(HTML_SUCCESS);
     og.state = OG_STATE_TRY_CONNECT;
@@ -706,7 +723,7 @@ void on_ap_debug() {
   json += F("}");
   server_send_json(json);
 }
-
+/* 
 // MQTT callback to read "Button" requests
 void mqtt_callback(const MQTT::Publish& pub) { 
   //DEBUG_PRINT("MQTT Message Received: ");
@@ -753,7 +770,17 @@ void mqtt_callback(const MQTT::Publish& pub) {
     }
   }
 }
+ */
+void do_wake() {
+  DEBUG_BEGIN(115200);
+  if(server) {
+    delete server;
+    server = NULL;
+  }
+  mfrc522.PCD_Init();
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_33, 1);
 
+}
 void do_setup()
 {
   DEBUG_BEGIN(115200);
@@ -765,6 +792,10 @@ void do_setup()
   og.begin();
   og.options_setup();
   og.init_sensors();
+  //OpenContacts
+  mfrc522.PCD_Init();
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_33, 1);
+
   if(og.get_mode() == OG_MOD_AP) og.play_startup_tune();
   DEBUG_PRINT(F("Complile Info: "));
   DEBUG_PRINT(F(__DATE__));
@@ -773,7 +804,7 @@ void do_setup()
   curr_cloud_access_en = og.get_cloud_access_en();
   curr_mode = og.get_mode();
   if(!server) {
-    server = new ESP8266WebServer(og.options[OPTION_HTP].ival);
+    server = new WebServer(og.options[OPTION_HTP].ival);
     if(curr_mode == OG_MOD_AP) dns = new DNSServer();
     DEBUG_PRINT(F("server started @ "));
     DEBUG_PRINTLN(og.options[OPTION_HTP].ival);
@@ -854,7 +885,7 @@ void on_ap_update() {
 }
 
 void on_sta_upload_fin() {
-
+/* 
   if(!verify_device_key()) {
     server_send_result(HTML_UNAUTHORIZED);
     Update.end(false); // Update.reset(); FAB
@@ -869,13 +900,13 @@ void on_sta_upload_fin() {
   
   server_send_result(HTML_SUCCESS);
   //restart_ticker.once_ms(1000, og.restart);
-  restart_in(1000);
+  restart_in(1000); */
 }
 
 void on_ap_upload_fin() { on_sta_upload_fin(); }
 
 void on_sta_upload() {
-  HTTPUpload& upload = server->upload();
+  /* HTTPUpload& upload = server->upload();
   if(upload.status == UPLOAD_FILE_START){
     DEBUG_PRINTLN(F("Stopping all network clients"));
     WiFiUDP::stopAll();
@@ -901,11 +932,11 @@ void on_sta_upload() {
     Update.end();
     DEBUG_PRINTLN(F("upload aborted"));
   }
-  delay(0);    
+  delay(0);  */   
 }
 
 void on_ap_upload() {
-  HTTPUpload& upload = server->upload();
+ /*  HTTPUpload& upload = server->upload();
   if(upload.status == UPLOAD_FILE_START){
     Serial.println(F("prepare to upload: "));
     Serial.println(upload.filename);
@@ -927,7 +958,7 @@ void on_ap_upload() {
     Update.end();
     Serial.println(F("upload aborted"));
   }
-  delay(0);    
+  delay(0);   */  
 }
 
 void check_status_ap() {
@@ -940,7 +971,7 @@ void check_status_ap() {
 }
 
 bool mqtt_connect_subscibe() {
-  static ulong mqtt_subscribe_timeout = 0;
+ /*  static ulong mqtt_subscribe_timeout = 0;
   if(curr_utc_time > mqtt_subscribe_timeout) {
     if (!mqttclient.connected()) {
       DEBUG_PRINT(F("MQTT Not connected- (Re)connect MQTT"));
@@ -957,13 +988,13 @@ bool mqtt_connect_subscibe() {
         return false;
       }
     }
-  }
+  } */
 }
 
 void perform_notify(String s) {
   DEBUG_PRINT(F("Sending Notify to connected systems, value:"));
   DEBUG_PRINTLN(s);
-  // Blynk notification
+  /* // Blynk notification
   if(curr_cloud_access_en && Blynk.connected()) {
     DEBUG_PRINTLN(F(" Blynk Notify"));
     Blynk.notify(s);
@@ -991,7 +1022,7 @@ void perform_notify(String s) {
         DEBUG_PRINTLN(" Sending MQTT Notification");
         mqttclient.publish(og.options[OPTION_NAME].sval + "/OUT/NOTIFY",s); 
     }
-  }
+  } */
 }
 
 void process_dynamics(byte event) {
@@ -1134,17 +1165,17 @@ void check_status() {
     read_cnt = (read_cnt+1)%100;
     // get temperature readings
     og.read_TH_sensor(tempC, humid);
-    if (checkstatus_timeout == 0){
+     if (checkstatus_timeout == 0){
       DEBUG_PRINTLN(F("First time checking status don't trigger a status change, set full history to current value"));
       if (door_status) { door_status_hist = B11111111; }
       else { door_status_hist = B00000000; }
     }else{
        door_status_hist = (door_status_hist<<1) | door_status;
     }
-    //DEBUG_PRINT(F("Histogram value:"));
+    //DEB UG_PRINT(F("Histogram value:"));
     //DEBUG_PRINTLN(door_status_hist);
     //DEBUG_PRINT(F("Vehicle Status:"));
-    //DEBUG_PRINTLN(vehicle_status);
+    //DEBUG_PRINTLN(vehicle_status);*/
     byte event = check_door_status_hist();
 
     //Upon change
@@ -1221,7 +1252,7 @@ void check_status() {
 #endif
       
       //IFTTT only recieves state change events not ongoing status
-
+/* 
       //Mqtt update
       if((og.options[OPTION_MQTT].sval.length()>8) && (mqttclient.connected())) {
         DEBUG_PRINTLN(F(" Update MQTT (State Refresh)"));
@@ -1239,10 +1270,10 @@ void check_status() {
       // Send status report every 15 seconds: we don't need to send updates frequently if there is no status change.
       checkstatus_report_timeout= curr_utc_time + 15; 
     }
-    
+     */
     // Process dynamics: automation and notifications
     // report status to Blynk
-    if(curr_cloud_access_en && Blynk.connected()) {
+    /* if(curr_cloud_access_en && Blynk.connected()) {
       DEBUG_PRINTLN(F(" Update Blynk (State Refresh)"));
       
       static uint old_distance = 0;
@@ -1251,7 +1282,7 @@ void check_status() {
       if(distance != old_distance) {  Blynk.virtualWrite(BLYNK_PIN_DIST, distance); old_distance = distance; }
       if(door_status != old_door_status) { (door_status) ? blynk_door.on() : blynk_door.off(); old_door_status = door_status; }
       if(vehicle_status != old_vehicle_status) { (vehicle_status==1) ? blynk_car.on() : blynk_car.off(); old_vehicle_status = vehicle_status; }
-      if(old_ip != get_ip()) { Blynk.virtualWrite(BLYNK_PIN_IP, get_ip()); old_ip = get_ip(); }
+      if(old_ip != get_ip()) { Blynk.virtualWrite(BLYNK_PIN_IP, get_ip()); old_ip = get_ip(); } */
 
       // report json strings to Blynk
       /* comment this section out as the features are not fully ready yet
@@ -1274,8 +1305,8 @@ void check_status() {
       */
     }
     
-    process_dynamics(event);
-    checkstatus_timeout = curr_utc_time + og.options[OPTION_RIV].ival;
+ /*    process_dynamics(event);
+    checkstatus_timeout = curr_utc_time + og.options[OPTION_RIV].ival; */
     
   }
 }
@@ -1405,7 +1436,7 @@ void do_loop() {
       DEBUG_PRINTLN(F("Web Server endpoints (STA mode) registered"));
 
       // use ap ssid as mdns name
-      if(MDNS.begin(get_ap_ssid().c_str(), WiFi.localIP())) {
+      if(MDNS.begin(get_ap_ssid().c_str())) {
         DEBUG_PRINTLN(F("MDNS registered"));
         DEBUG_PRINTLN(get_ap_ssid().c_str());
         //MDNS.addService("http", "tcp", og.options[OPTION_HTP].ival);
@@ -1413,9 +1444,9 @@ void do_loop() {
       }
 
       if(curr_cloud_access_en) {
-        Blynk.config(og.options[OPTION_AUTH].sval.c_str(), og.options[OPTION_BDMN].sval.c_str(), (uint16_t) og.options[OPTION_BPRT].ival); // use the config function
+        /* Blynk.config(og.options[OPTION_AUTH].sval.c_str(), og.options[OPTION_BDMN].sval.c_str(), (uint16_t) og.options[OPTION_BPRT].ival); // use the config function
         Blynk.connect();
-        DEBUG_PRINTLN(F("Blynk Connected"));
+        DEBUG_PRINTLN(F("Blynk Connected")); */
       }
       if(og.options[OPTION_MQTT].sval.length()>8) {
         mqtt_connect_subscibe();
@@ -1469,17 +1500,18 @@ void do_loop() {
       	//MDNS.update();
         time_keeping();
         check_status(); //This checks the door, sends info to services and processes the automation rules
-        server->handleClient();
 
+        server->handleClient();
+/* 
         if(curr_cloud_access_en)
-          Blynk.run();
+          Blynk.run(); */
         //Handle MQTT
-        if(og.options[OPTION_MQTT].sval.length()>8) {
+/*         if(og.options[OPTION_MQTT].sval.length()>8) {
           if (!mqttclient.connected()) {
             mqtt_connect_subscibe();
           }
           else {mqttclient.loop();} //Processes MQTT Pings/keep alives
-        }
+        } */
         connecting_timeout = 0;
       } else {
         //og.state = OG_STATE_INITIAL;
@@ -1501,7 +1533,7 @@ void do_loop() {
   if(og.alarm)
     process_alarm();
 }
-
+/* 
 BLYNK_WRITE(BLYNK_PIN_RELAY) {
   DEBUG_PRINTLN(F("Received Blynk generated button request"));
   if(!og.options[OPTION_ALM].ival) {
@@ -1524,19 +1556,4 @@ BLYNK_WRITE(BLYNK_PIN_RELAY) {
     }  
   }
 }
-
-BLYNK_WRITE(BLYNK_PIN_CC) {
-  /* comment this section out as the features are not fully ready yet
-  DEBUG_PRINTLN(F("Received Blynk cc request"));
-  DEBUG_PRINTLN(param.asStr());
-  sta_change_controller_main(param.asStr());
-  */
-}
-
-BLYNK_WRITE(BLYNK_PIN_CO) {
-	/* comment this section out as the features are not fully ready yet
-  DEBUG_PRINTLN(F("Received Blynk co request"));
-  DEBUG_PRINTLN(param.asStr());  
-  sta_change_options_main(param.asStr());
-  */
-}
+ */

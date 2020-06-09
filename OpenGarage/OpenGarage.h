@@ -25,11 +25,12 @@
 
 #include <Arduino.h>
 #include <FS.h>
-#include <ESP8266WiFi.h>
+#include <SPIFFS.h>
+#include <WiFi.h>
 #include <Ticker.h>
-#include <DHTesp.h>
+/* #include <DHTesp.h>
 #include <AM2320.h>
-#include <DallasTemperature.h>
+#include <DallasTemperature.h> */
 
 #include "defines.h"
 
@@ -58,7 +59,7 @@ public:
   static void options_load();
   static void options_save();
   static void options_reset();
-  static void restart() { ESP.restart();} //digitalWrite(PIN_RESET, LOW); }
+  static void restart() { digitalWrite(PIN_RESET, LOW);} //digitalWrite(PIN_RESET, LOW); }
   static uint read_distance(); // centimeter
   static void init_sensors(); // initialize all sensor
   static void read_TH_sensor(float& C, float &H);
@@ -106,10 +107,10 @@ private:
   static void button_handler();
   static void led_handler();
   
-  static OneWire* oneWire;
+  /* static OneWire* oneWire;
   static DallasTemperature* ds18b20;
   static AM2320* am2320;
-  static DHTesp* dht;
+  static DHTesp* dht; */
 };
 
 #endif  // _OPENGARAGE_H_

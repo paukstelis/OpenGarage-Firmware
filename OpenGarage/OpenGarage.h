@@ -28,9 +28,6 @@
 #include <SPIFFS.h>
 #include <WiFi.h>
 #include <Ticker.h>
-/* #include <DHTesp.h>
-#include <AM2320.h>
-#include <DallasTemperature.h> */
 
 #include "defines.h"
 
@@ -43,8 +40,8 @@ struct OptionStruct {
 
 struct LogStruct {
   ulong tstamp; // time stamp
-  uint status;  // door status
-  uint dist;    // distance
+  ulong card_uid;  // door status
+  uint voltage;    // distance
 };
 
 class OpenGarage {
@@ -60,9 +57,6 @@ public:
   static void options_save();
   static void options_reset();
   static void restart() { digitalWrite(PIN_RESET, LOW);} //digitalWrite(PIN_RESET, LOW); }
-  static uint read_distance(); // centimeter
-  static void init_sensors(); // initialize all sensor
-  static void read_TH_sensor(float& C, float &H);
   static byte get_mode()   { return options[OPTION_MOD].ival; }
   static byte get_button() { return digitalRead(PIN_BUTTON); }
   static byte get_switch() { return digitalRead(PIN_SWITCH); }
@@ -107,10 +101,6 @@ private:
   static void button_handler();
   static void led_handler();
   
-  /* static OneWire* oneWire;
-  static DallasTemperature* ds18b20;
-  static AM2320* am2320;
-  static DHTesp* dht; */
 };
 
 #endif  // _OPENGARAGE_H_

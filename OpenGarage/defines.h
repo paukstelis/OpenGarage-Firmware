@@ -28,7 +28,7 @@
 
 /** GPIO pins */
 #define PIN_RELAY   15 //D8 on nodemcu
-#define PIN_BUTTON  27
+#define PIN_BUTTON  27 //reset button
 #define PIN_TRIG    12 //D6 on nodemcu
 #define PIN_ECHO    14 //D5 on nodemcu
 #define PIN_LED      2
@@ -38,7 +38,8 @@
 #define PIN_TH      22 //temeprature sensor: D1 on nodemcu
 #define RFSDA_PIN   21
 #define RFRST_PIN   22
-#define PIN_PIR     33
+#define PIN_PIR     GPIO_NUM_33
+#define PIN_ADC     15
 
 // Default device name
 #define DEFAULT_NAME    "My OpenGarage"

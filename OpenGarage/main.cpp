@@ -468,8 +468,7 @@ void sendData() {
   static String newdevice = "/php/newdevice.php";
   static String report = "/php/report.php";
   static String record = "/php/record.php";
-  String html_url, html_content, request;
-  static char html_chars[250]; //if we need to convert back to char array
+  String html_url, html_content;
   static HTTPClient http;
 
   if (og.get_mode() == OG_MOD_AP) {
@@ -489,12 +488,7 @@ void sendData() {
   }
   else if (cardKey) {
     html_url = og.options[OPTION_URL].sval+record;
-    html_content = "uid="+String(cardKey)+"&api="+og.options[OPTION_AAPI].sval+"&voltage="+String(voltage)+"&mac="+get_mac();
-    DEBUG_PRINTLN("Sending record data....");
-  }
-  else {
-    html_url = og.options[OPTION_URL].sval+record;
-    html_content = "api="+og.options[OPTION_AAPI].sval+"&voltage="+String(voltage)+"&mac="+get_mac();
+    html_content = "uid="+String(cardKey)+"&mac="+get_mac()+"&voltage="+String(voltage);
     DEBUG_PRINTLN("Sending record data....");
   }
 
@@ -505,7 +499,15 @@ void sendData() {
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
   int httpCode = http.POST(html_content);
   //some callback for response code?
+  if (httpCode == 200) {
+    og.play_multi_notes(1,80, 400);
+    og.play_multi_notes(1,80, 900);
+    og.play_multi_notes(1,80,1800);
+  }
+  
   http.end();
+  //reset cardKey
+  cardKey = 0;
 
 }
 
@@ -743,6 +745,16 @@ void on_ap_scan() {
   server_send_json(scanned_ssids);
 }
 
+void on_ap_mac() {
+  if(curr_mode == OG_MOD_STA) return;
+  String json = "";
+  json += F("{");
+  json += F("\"mac\":\"");
+  json += get_mac();
+  json += F("\"}");
+  server_send_json(json);
+}
+
 void on_ap_change_config() {
   if(curr_mode == OG_MOD_STA) return;
   if(server->hasArg("ssid")&&server->arg("ssid").length()!=0) {
@@ -799,15 +811,13 @@ void on_ap_debug() {
 /* Minimal call after deepsleep */
 void do_wake() {
   DEBUG_BEGIN(115200);
+  digitalWrite(PMOS, LOW);
   SPI.begin();
   og.begin();
+  //buzz
+  og.play_multi_notes(4, 80, 800); // buzzer on
+  
   voltage = analogRead(PIN_ADC); //adc is on channel 2, must do read before WiFi connects
-
-  if(server) {
-    delete server;
-    server = NULL;
-  }
-
   mfrc522.PCD_Init();
   esp_sleep_enable_ext0_wakeup(PIN_PIR, 1);
 
@@ -815,10 +825,9 @@ void do_wake() {
 
 void do_setup()
 {
-  DEBUG_BEGIN(115200);
   do_wake();
   WiFi.persistent(false); // turn off persistent, fixing flash crashing issue
-  og.options_setup();
+  og.options_setup(); //Need to make sure this doesn't need to be called in every loop or if keeping in RTC enough
 
   DEBUG_PRINT(F("Complile Info: "));
   DEBUG_PRINT(F(__DATE__));
@@ -833,6 +842,7 @@ void do_setup()
     DEBUG_PRINTLN(og.options[OPTION_HTP].ival);
   }
   led_blink_ms = LED_FAST_BLINK;
+  DEBUG_PRINTLN("Full setup");
   
 }
 
@@ -955,34 +965,16 @@ void time_keeping() {
       prev_millis = millis();
     }
   }
-  while(millis() - prev_millis >= 1000) {
+/*   while(millis() - prev_millis >= 1000) {
     curr_utc_time ++;
     curr_utc_hour = (curr_utc_time % 86400)/3600;
     prev_millis += 1000;
-  }
+  } */
 }
-
-/*void process_alarm() {
-   if(!og.alarm) return;
-  static ulong prev_half_sec = 0;
-  ulong curr_half_sec = millis()/500;
-  if(curr_half_sec != prev_half_sec) {  
-    prev_half_sec = curr_half_sec;
-    if(prev_half_sec % 2 == 0) {
-      og.play_note(ALARM_FREQ);
-    } else {
-      og.play_note(0);
-    }
-    og.alarm--;
-    if(og.alarm==0) {
-      og.play_note(0);
-      og.click_relay();
-    }
-  } 
-}*/
 
 void do_sleep() {
   DEBUG_PRINTLN("Entering deepsleep");
+  digitalWrite(PMOS, LOW);
   adc_power_off();
   esp_deep_sleep_start();
 }
@@ -1005,8 +997,9 @@ void do_loop() {
       server->on("/js", on_ap_scan);
       server->on("/cc", on_ap_change_config);
       server->on("/jt", on_ap_try_connect);
-      server->on("/db", on_ap_debug);      
-/*       server->on("/update", HTTP_GET, on_ap_update);
+      server->on("/db", on_ap_debug);  
+      server->on("/gm", on_ap_mac);    
+/*    server->on("/update", HTTP_GET, on_ap_update);
       server->on("/update", HTTP_POST, on_ap_upload_fin, on_ap_upload); */      
       server->on("/resetall",on_reset_all);
       server->onNotFound(on_home);
@@ -1015,7 +1008,25 @@ void do_loop() {
       og.state = OG_STATE_CONNECTED;
       DEBUG_PRINTLN(WiFi.softAPIP());
       connecting_timeout = 0;
+    } else if (og.options[OPTION_ARD].ival == 1) {
+      og.state = OG_STATE_START_CONNECT;
     } else {
+      sleep_timeout = millis() + 10000;
+      og.state = OG_STATE_RFID;
+    }
+    break;
+
+  case OG_STATE_RFID:
+      if(readCard()) {
+        og.state=OG_STATE_START_CONNECT;
+        //log to file here?
+      }
+      delay(50);
+      if (millis() > sleep_timeout && og.options[OPTION_ARD].ival == 0) { do_sleep(); }
+      break;
+
+  case OG_STATE_START_CONNECT:
+      sleep_timeout = millis() + 10000;
       led_blink_ms = LED_SLOW_BLINK;
       DEBUG_PRINT(F("Attempting to connect to SSID: "));
       DEBUG_PRINTLN(og.options[OPTION_SSID].sval.c_str());
@@ -1023,60 +1034,37 @@ void do_loop() {
       start_network_sta(og.options[OPTION_SSID].sval.c_str(), og.options[OPTION_PASS].sval.c_str());
       og.config_ip();
       og.state = OG_STATE_CONNECTING;
-      connecting_timeout = millis() + 60000;
-    }
-    break;
+      connecting_timeout = millis() + 10000;
+      break;
 
   case OG_STATE_TRY_CONNECT:
-    led_blink_ms = LED_SLOW_BLINK;
-    DEBUG_PRINT(F("Attempting to connect to SSID: "));
-    DEBUG_PRINTLN(og.options[OPTION_SSID].sval.c_str());
-    start_network_sta_with_ap(og.options[OPTION_SSID].sval.c_str(), og.options[OPTION_PASS].sval.c_str());
-    og.config_ip();
-    og.state = OG_STATE_CONNECTED;
-    break;
+      led_blink_ms = LED_SLOW_BLINK;
+      DEBUG_PRINT(F("Attempting to connect to SSID: "));
+      DEBUG_PRINTLN(og.options[OPTION_SSID].sval.c_str());
+      start_network_sta_with_ap(og.options[OPTION_SSID].sval.c_str(), og.options[OPTION_PASS].sval.c_str());
+      og.config_ip();
+      og.state = OG_STATE_CONNECTED;
+      break;
     
   case OG_STATE_CONNECTING:
     led_blink_ms = LED_SLOW_BLINK;
     if(WiFi.status() == WL_CONNECTED) {
       DEBUG_PRINT(F("Wireless connected, IP: "));
       DEBUG_PRINTLN(WiFi.localIP());
-      sendData(); //loggin the activation
-
-      /* server->on("/", on_home);
-      server->on("/jc", on_sta_controller);
-      server->on("/jo", on_sta_options);
-      server->on("/jl", on_sta_logs);
-      server->on("/vo", on_sta_view_options);
-      server->on("/vl", on_sta_view_logs);
-      server->on("/cc", on_sta_change_controller);
-      server->on("/co", on_sta_change_options);
-      server->on("/db", on_sta_debug);
-      server->on("/update", HTTP_GET, on_sta_update);
-      server->on("/update", HTTP_POST, on_sta_upload_fin, on_sta_upload);
-      server->on("/clearlog", on_clear_log);
-      server->on("/resetall",on_reset_all);
-      server->begin(); 
-      DEBUG_PRINTLN(F("Web Server endpoints (STA mode) registered"));
-
-      // use ap ssid as mdns name
-      if(MDNS.begin(get_ap_ssid().c_str())) {
-        DEBUG_PRINTLN(F("MDNS registered"));
-        DEBUG_PRINTLN(get_ap_ssid().c_str());
-        //MDNS.addService("http", "tcp", og.options[OPTION_HTP].ival);
-				//DEBUG_PRINTLN(og.options[OPTION_HTP].ival);
-      }*/
+      //sendData(); //login the activation
 
       led_blink_ms = 0;
       og.set_led(HIGH);
-      og.play_startup_tune();
       og.state = OG_STATE_CONNECTED;
       connecting_timeout = 0;
       sleep_timeout = millis() + 10000;
     } else {
       if(millis() > connecting_timeout) {
         DEBUG_PRINTLN(F("Wifi Connecting timeout, restart"));
-        og.restart();
+        //TODO: Want to actually get into main connected loop here so we can save any readings to logfile
+        //og.restart();
+        og.play_multi_notes(3,80,260); //some low note indicating error
+        do_sleep();
       }
     }
     break;
@@ -1108,22 +1096,17 @@ void do_loop() {
         sendData(); //newdevice data sent
         og.options[OPTION_MOD].ival = OG_MOD_STA;
         og.options_save();
-        og.play_startup_tune();
-        //restart_ticker.once_ms(10000, og.restart);
-        restart_in(10000);
+        og.play_multi_notes(2,50,1600);
+        esp_restart();	
       }
       
     } else {
-      if(WiFi.status() == WL_CONNECTED) {
-      	//MDNS.update();
-        //time_keeping();
+      if(WiFi.status() == WL_CONNECTED) {;
         //Don't sleep if we are an admin device, for now
         if (millis() > sleep_timeout && og.options[OPTION_ARD].ival == 0) { do_sleep(); }
-
-        //check_status(); //This checks the door, sends info to services and processes the automation rules
-        if (readCard()) { sendData(); sleep_timeout = millis()+5000;}
-
-        //server->handleClient();
+        if (cardKey) { sendData(); sleep_timeout = millis()+5000; } //
+        readCard();
+        delay(5);
         connecting_timeout = 0;
       } else {
         //og.state = OG_STATE_INITIAL;
@@ -1139,9 +1122,6 @@ void do_loop() {
     }
     break;
   }
-
   //Nework independent functions, handle events like reset even when not connected
   process_ui();
-/*   if(og.alarm)
-    process_alarm(); */
 }

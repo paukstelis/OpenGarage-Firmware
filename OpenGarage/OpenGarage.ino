@@ -32,7 +32,7 @@
 struct tcp_pcb;
 extern struct tcp_pcb* tcp_tw_pcbs;
 extern "C" void tcp_abort (struct tcp_pcb* pcb);
-RTC_DATA_ATTR uint32_t wakes=0;
+RTC_DATA_ATTR int wakes;
 
 void tcpCleanup()   // losing bytes work around
 {  while(tcp_tw_pcbs)
@@ -42,8 +42,14 @@ void do_loop();
 void do_wake();
 
 void setup() {
-   if (wakes == 0) { do_setup(); }
-  else { do_wake(); wakes++; }
+  if (wakes) {
+    wakes=wakes+1;
+    do_wake();
+  }
+  else {
+    do_setup();
+  }
+
 }
 
 void loop() {

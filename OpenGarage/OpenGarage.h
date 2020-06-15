@@ -56,10 +56,10 @@ public:
   static void options_load();
   static void options_save();
   static void options_reset();
-  static void restart() { digitalWrite(PIN_RESET, LOW);} //digitalWrite(PIN_RESET, LOW); }
+  static void restart() { esp_restart();} //digitalWrite(PIN_RESET, LOW); }
   static byte get_mode()   { return options[OPTION_MOD].ival; }
   static byte get_button() { return digitalRead(PIN_BUTTON); }
-  static byte get_switch() { return digitalRead(PIN_SWITCH); }
+  //static byte get_switch() { return digitalRead(PIN_SWITCH); }
   static byte get_led()    { return led_reverse?(!digitalRead(PIN_LED)):digitalRead(PIN_LED); }
   static bool get_cloud_access_en();
   static void set_led(byte status)   { digitalWrite(PIN_LED, led_reverse?(!status):status); }
@@ -83,6 +83,7 @@ public:
   static bool read_log_next(LogStruct& data);
   static bool read_log_end();
   static void play_note(uint freq);
+  static void play_multi_notes(uint number, uint del, uint freq);
   static void set_alarm(byte ov=0) { // ov = override value
     if(ov) alarm = ov*10+1;
     else alarm = options[OPTION_ALM].ival * 10 + 1;

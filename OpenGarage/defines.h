@@ -28,18 +28,22 @@
 
 /** GPIO pins */
 #define PIN_RELAY   15 //D8 on nodemcu
-#define PIN_BUTTON  27 //reset button
+#define PIN_BUTTON  0 //reset button
 #define PIN_TRIG    12 //D6 on nodemcu
 #define PIN_ECHO    14 //D5 on nodemcu
 #define PIN_LED      2
 #define PIN_RESET   16
 #define PIN_BUZZER  17
-#define PIN_SWITCH  18 //switch sensor: D2 on nodemcu
-#define PIN_TH      22 //temeprature sensor: D1 on nodemcu
+#define LEDC_CHANNEL 0
+
 #define RFSDA_PIN   21
 #define RFRST_PIN   22
 #define PIN_PIR     GPIO_NUM_33
-#define PIN_ADC     15
+#define PIN_ADC     A13
+#define PMOS         5
+
+#define RB 100  // voltage divider bottom and top resistor values (Kohm)
+#define RT 470
 
 // Default device name
 #define DEFAULT_NAME    "My OpenGarage"
@@ -85,6 +89,8 @@
 #define OG_STATE_TRY_CONNECT    3
 #define OG_STATE_WAIT_RESTART   4
 #define OG_STATE_RESET          9
+#define OG_STATE_RFID           5
+#define OG_STATE_START_CONNECT  6
 
 /* #define BLYNK_PIN_DOOR  V0
 #define BLYNK_PIN_RELAY V1

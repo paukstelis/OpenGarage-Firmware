@@ -92,11 +92,12 @@ void OpenGarage::begin() {
   digitalWrite(PIN_RESET, HIGH);
   pinMode(PIN_RESET, OUTPUT);
   
-  ledcSetup(0, 500, 16);
+  ledcSetup(0, 5000, 8);
+
   digitalWrite(PIN_BUZZER, LOW);
   pinMode(PIN_BUZZER, OUTPUT);
-  ledcAttachPin(PIN_BUZZER, 0);
-  
+  ledcAttachPin(PIN_BUZZER, LEDC_CHANNEL);
+
   pinMode(PIN_ADC, INPUT);
   digitalWrite(PIN_RELAY, LOW);
   pinMode(PIN_RELAY, OUTPUT);
@@ -126,10 +127,10 @@ void OpenGarage::begin() {
   pinMode(PIN_ECHO, INPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
 
-  pinMode(PIN_SWITCH, INPUT_PULLUP);
-  
+  pinMode(PMOS, OUTPUT);
+
   state = OG_STATE_INITIAL;
-  //SPIFFS.begin(true);
+  SPIFFS.begin(true);
   if(!SPIFFS.begin()) {
     DEBUG_PRINTLN(F("failed to mount file system!"));
   }
@@ -295,15 +296,20 @@ bool OpenGarage::read_log_end() {
   return true;
 }
 
+
 void OpenGarage::play_note(uint freq) {
    if(freq>0) {
-    /*
-    analogWrite(PIN_BUZZER, 512);
-    analogWriteFreq(freq);
-    */
-    ledcWrite(PIN_BUZZER, freq);
+    ledcWriteTone(LEDC_CHANNEL, freq);
   } else {
-    ledcWrite(PIN_BUZZER, 0);
+    ledcWriteTone(LEDC_CHANNEL, 0);
+  }
+}
+
+void OpenGarage::play_multi_notes(uint number, uint del, uint freq) {
+  for (uint i=0; i<number; i++) {
+    ledcWriteTone(LEDC_CHANNEL, freq);
+    delay(del);
+    ledcWriteTone(LEDC_CHANNEL, 0);
   }
 }
 

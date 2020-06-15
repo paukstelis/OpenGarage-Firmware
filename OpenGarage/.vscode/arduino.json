@@ -1,7 +1,7 @@
 {
     "programmer": "ArduinoISP",
     "board": "esp32:esp32:esp32",
-    "configuration": "PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=921600,DebugLevel=none",
+    "configuration": "PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=460800,DebugLevel=none",
     "sketch": "OpenGarage.ino",
     "port": "/dev/ttyUSB0"
 }

@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "*.def": "cpp",
+        "*.tcc": "cpp",
+        "optional": "cpp",
+        "functional": "cpp",
+        "random": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp",
+        "condition_variable": "cpp"
+    }
+}

@@ -39,16 +39,11 @@ void tcpCleanup()   // losing bytes work around
   {    tcp_abort(tcp_tw_pcbs);  }}
 void do_setup();
 void do_loop();
-void do_wake();
+//void do_wake();
 
 void setup() {
-  if (wakes) {
-    wakes=wakes+1;
-    do_wake();
-  }
-  else {
+
     do_setup();
-  }
 
 }
 

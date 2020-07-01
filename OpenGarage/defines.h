@@ -92,18 +92,6 @@
 #define OG_STATE_RFID           5
 #define OG_STATE_START_CONNECT  6
 
-/* #define BLYNK_PIN_DOOR  V0
-#define BLYNK_PIN_RELAY V1
-#define BLYNK_PIN_LCD   V2
-#define BLYNK_PIN_DIST  V3
-#define BLYNK_PIN_CAR   V4
-#define BLYNK_PIN_IP    V5
-#define BLYNK_PIN_JC    V6
-#define BLYNK_PIN_CC    V7
-#define BLYNK_PIN_JO    V8
-#define BLYNK_PIN_CO    V9
-#define BLYNK_PIN_JL    V10 */
-
 enum {
   DIRTY_BIT_JC = 0,
   DIRTY_BIT_JO,
@@ -161,6 +149,7 @@ typedef enum {
   OPTION_BLDG,    // bldg
   OPTION_ROOM,    // room
   OPTION_OCCP,    // occup
+  OPTION_BUZZ,    // buzzer
   OPTION_ARD,     // admin_read
   OPTION_AAPI,    // admin_api 
   NUM_OPTIONS     // number of options
@@ -168,10 +157,10 @@ typedef enum {
 
 // if button is pressed for 1 seconds, report IP
 #define BUTTON_REPORTIP_TIMEOUT 800
-// if button is pressed for at least 5 seconds, reset to AP mode
-#define BUTTON_APRESET_TIMEOUT 4500
-// if button is pressed for at least 10 seconds, factory reset
-#define BUTTON_FACRESET_TIMEOUT  9500
+// if button is pressed for at least 3 seconds, reset to AP mode
+#define BUTTON_APRESET_TIMEOUT 2500
+// if button is pressed for at least 7 seconds, factory reset
+#define BUTTON_FACRESET_TIMEOUT  6500
 
 #define LED_FAST_BLINK 100
 #define LED_SLOW_BLINK 500
@@ -179,6 +168,9 @@ typedef enum {
 #define TIME_SYNC_TIMEOUT  1800 //Issues connecting to MQTT can throw off the time function, sync more often
 
 #define TMP_BUFFER_SIZE 100
+
+#define NTP_SERVER "us.pool.ntp.org"
+#define TZ_INFO "MST7MDT6,M3.2.0/02:00:00,M11.1.0/02:00:00" // Americas/Denver
 
 /** Serial debug functions */
 #define SERIAL_DEBUG

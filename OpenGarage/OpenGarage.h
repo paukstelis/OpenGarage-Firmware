@@ -39,9 +39,9 @@ struct OptionStruct {
 };
 
 struct LogStruct {
-  ulong tstamp; // time stamp
-  ulong card_uid;  // door status
-  uint voltage;    // distance
+  long tstamp; // time stamp
+  ulong card_uid;  // card_uid
+  uint voltage;    // voltage reading
 };
 
 class OpenGarage {
@@ -61,7 +61,7 @@ public:
   static byte get_button() { return digitalRead(PIN_BUTTON); }
   //static byte get_switch() { return digitalRead(PIN_SWITCH); }
   static byte get_led()    { return led_reverse?(!digitalRead(PIN_LED)):digitalRead(PIN_LED); }
-  static bool get_cloud_access_en();
+  //static bool get_cloud_access_en();
   static void set_led(byte status)   { digitalWrite(PIN_LED, led_reverse?(!status):status); }
   static void set_relay(byte status) { digitalWrite(PIN_RELAY, status); }
   static void click_relay() {

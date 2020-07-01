@@ -37,7 +37,7 @@ extern OpenGarage og;
  * Integer options don't have string value
  * String options don't have integer or max value
  */
-RTC_DATA_ATTR OptionStruct OpenGarage::options[] = {
+OptionStruct OpenGarage::options[] = {
   {"fwv", OG_FWV,      255, ""},
   {"mnt", OG_MNT_CEILING,3, ""},
   {"dth", 50,        65535, ""},
@@ -76,6 +76,7 @@ RTC_DATA_ATTR OptionStruct OpenGarage::options[] = {
   {"bldg", 0, 0, ""},
   {"room", 0, 0, ""},
   {"occup", 1, 300, ""},
+  {"use_buzz", 1, 1, ""},
   {"admin_read", 0, 1, ""},
   {"admin_api", 0, 0, DEFAULT_DKEY} 
 };
@@ -102,10 +103,10 @@ void OpenGarage::begin() {
   digitalWrite(PIN_RELAY, LOW);
   pinMode(PIN_RELAY, OUTPUT);
 
-  // detect LED logic
+   // detect LED logic
   pinMode(PIN_LED, INPUT);
   // use median filtering to detect led logic
-  byte nl=0, nh=0;
+  /* byte nl=0, nh=0;
   for(byte i=0;i<KAVG;i++) {
     if(digitalRead(PIN_LED)==HIGH) nh++;
     else nl++;
@@ -116,18 +117,19 @@ void OpenGarage::begin() {
     //Serial.println(F("reverse logic"));
   } else {
     //Serial.println(F("normal logic"));
-  }
+  }  */
 
   pinMode(PIN_LED, OUTPUT);
   set_led(LOW);
   
-  digitalWrite(PIN_TRIG, HIGH);
+/*   digitalWrite(PIN_TRIG, HIGH);
   pinMode(PIN_TRIG, OUTPUT);
   
-  pinMode(PIN_ECHO, INPUT);
+  pinMode(PIN_ECHO, INPUT); */
   pinMode(PIN_BUTTON, INPUT_PULLUP);
 
   pinMode(PMOS, OUTPUT);
+  digitalWrite(PMOS, HIGH);
 
   state = OG_STATE_INITIAL;
   SPIFFS.begin(true);
@@ -229,12 +231,12 @@ void OpenGarage::options_save() {
   set_dirty_bit(DIRTY_BIT_JO, 1);
 }
 
-bool OpenGarage::get_cloud_access_en() {
+/* bool OpenGarage::get_cloud_access_en() {
   if(options[OPTION_AUTH].sval.length()==32) {
     return true;
   }
   return false;
-}
+} */
 
 void OpenGarage::write_log(const LogStruct& data) {
   File file;
@@ -252,6 +254,7 @@ void OpenGarage::write_log(const LogStruct& data) {
     file.write((const byte*)&data, sizeof(LogStruct));
     LogStruct l;
     l.tstamp = 0;
+    DEBUG_PRINTLN("Pre-filling log file");
     for(;next<MAX_LOG_SIZE;next++) {  // pre-fill the log file to maximum size
       file.write((const byte*)&l, sizeof(LogStruct));
     }
@@ -296,20 +299,23 @@ bool OpenGarage::read_log_end() {
   return true;
 }
 
-
 void OpenGarage::play_note(uint freq) {
-   if(freq>0) {
+  if (options[OPTION_BUZZ].ival) {
+    if(freq>0) {
     ledcWriteTone(LEDC_CHANNEL, freq);
-  } else {
-    ledcWriteTone(LEDC_CHANNEL, 0);
+    } else {
+      ledcWriteTone(LEDC_CHANNEL, 0);
+    }
   }
 }
 
 void OpenGarage::play_multi_notes(uint number, uint del, uint freq) {
-  for (uint i=0; i<number; i++) {
-    ledcWriteTone(LEDC_CHANNEL, freq);
-    delay(del);
-    ledcWriteTone(LEDC_CHANNEL, 0);
+  if (options[OPTION_BUZZ].ival) { 
+    for (uint i=0; i<number; i++) {
+      ledcWriteTone(LEDC_CHANNEL, freq);
+      delay(del);
+      ledcWriteTone(LEDC_CHANNEL, 0);
+    }
   }
 }
 

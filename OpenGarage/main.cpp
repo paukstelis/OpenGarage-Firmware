@@ -61,8 +61,8 @@ static String scanned_ssids;
 static byte read_cnt = 0;
 static uint distance = 0;
 static uint vdistance = 0;
-static uint cardKey = 0;
-static uint lastKey = 0;
+static ulong cardKey = 0;
+static ulong lastKey = 0;
 static uint voltage = 0;
 static float tempC = 0;
 static float humid = 0;
@@ -78,9 +78,10 @@ static byte door_status_hist = 0;
 static ulong curr_utc_time = 0;
 static ulong curr_utc_hour= 0;
 static HTTPClient http;
-
+//RTC_DATA_ATTR static struct tm local_time;
 void do_setup();
 void do_wake();
+void reset_localtime();
 
 byte findKeyVal (const char *str, const char *key, char *strbuf=NULL, uint8_t maxlen=0) {
   uint8_t found=0;
@@ -420,22 +421,30 @@ bool verify_device_key(const char* command) {
 }
 
 void on_reset_all(){
-  if(!verify_device_key()) {
+/*   if(!verify_device_key()) {
     server_send_result(HTML_UNAUTHORIZED);
     return;
   }
-
+ */
   og.state = OG_STATE_RESET;
   server_send_result(HTML_SUCCESS);
 }
 
+void log_data() {
+    LogStruct l;
+    time_t tnow = time(nullptr);
+    l.tstamp = tnow;
+    l.card_uid = cardKey;
+    l.voltage = voltage;
+    og.write_log(l);
+}
+
+void send_log_data() {
+
+}
+
 void on_clear_log() {
-  if(!verify_device_key()) {
-    server_send_result(HTML_UNAUTHORIZED);
-    return;
-  }
-  og.log_reset();
-  server_send_result(HTML_SUCCESS);  
+  og.log_reset(); 
 }
 
 bool readCard() {
@@ -455,7 +464,8 @@ bool readCard() {
   mfrc522.PCD_StopCrypto1();
 
   if (cardKey == lastKey) {
-    DEBUG_PRINTLN("Duplicate key read, do not sending");
+    DEBUG_PRINTLN("Duplicate key read, not sending");
+    cardKey=0;
     return false;
   }
 
@@ -470,6 +480,7 @@ void sendData() {
   static String record = "/php/record.php";
   String html_url, html_content;
   static HTTPClient http;
+  LogStruct l;
 
   if (og.get_mode() == OG_MOD_AP) {
     html_url = og.options[OPTION_URL].sval+newdevice;
@@ -504,13 +515,51 @@ void sendData() {
     og.play_multi_notes(1,80, 900);
     og.play_multi_notes(1,80,1800);
   }
+  else {
+    //log item
+    log_data();
+  }
   
   http.end();
   //reset cardKey
   cardKey = 0;
 
 }
+void time_keeping() {
+  static bool configured = false;
+  static ulong prev_millis = 0;
+  static ulong time_keeping_timeout = 0;
 
+  if(!configured) {
+    DEBUG_PRINTLN(F("Set time server"));
+    configTime(0, 0, "216.239.35.8", "66.228.48.38", NULL);
+    configured = true;
+  }
+/* 
+  if(!curr_utc_time || (curr_utc_time > time_keeping_timeout)) {
+    ulong gt = time(nullptr);
+    if(gt<978307200L) {
+      // if we didn't get response, re-try after 2 seconds
+      time_keeping_timeout = curr_utc_time + 2;
+    } else {
+      curr_utc_time = gt;
+      curr_utc_hour = (curr_utc_time % 86400)/3600;
+      DEBUG_PRINT(F("Updated time from NTP: "));
+      DEBUG_PRINT(curr_utc_time);
+      DEBUG_PRINT(" Hour: ");
+      DEBUG_PRINTLN(curr_utc_hour);
+      // if we got a response, re-try after TIME_SYNC_TIMEOUT seconds
+      //time_keeping_timeout = curr_utc_time + TIME_SYNC_TIMEOUT;
+      prev_millis = millis();
+    }
+  }
+  while(millis() - prev_millis >= 1000) {
+    curr_utc_time ++;
+    curr_utc_hour = (curr_utc_time % 86400)/3600;
+    prev_millis += 1000;
+  } */
+}
+/* 
 void sta_change_controller_main(const char *command) {
   if(curr_mode == OG_MOD_AP) return;
 
@@ -553,6 +602,7 @@ void sta_change_controller_main(const char *command) {
 
 }
 
+ 
 void on_sta_change_controller() {
   sta_change_controller_main(NULL);  
 }
@@ -739,7 +789,7 @@ void on_sta_options() {
   sta_options_fill_json(json);
   server_send_json(json);
 }
-
+*/
 void on_ap_scan() {
   if(curr_mode == OG_MOD_STA) return;
   server_send_json(scanned_ssids);
@@ -763,6 +813,7 @@ void on_ap_change_config() {
     og.options[OPTION_URL].sval = server->arg("url");
     og.options[OPTION_BLDG].sval = server->arg("bldg");
     og.options[OPTION_ROOM].sval = server->arg("room");
+    og.options[OPTION_BUZZ].ival = server->arg("buzzer").toInt();
     og.options[OPTION_ANAM].sval = server->arg("admin_name");
     og.options[OPTION_ARD].ival = server->arg("admin_read").toInt();
     og.options[OPTION_AAPI].sval = server->arg("admin_api");
@@ -808,38 +859,52 @@ void on_ap_debug() {
   server_send_json(json);
 }
 
+void do_sleep() {
+  DEBUG_PRINTLN("Entering deepsleep");
+  digitalWrite(PMOS, HIGH);
+  if(WiFi.status() == WL_CONNECTED) {
+    //reset_localtime();
+    time_keeping();
+  }
+  adc_power_off();
+  esp_deep_sleep_start();
+}
+
 /* Minimal call after deepsleep */
 void do_wake() {
-  DEBUG_BEGIN(115200);
   digitalWrite(PMOS, LOW);
   SPI.begin();
-  og.begin();
+  
   //buzz
   og.play_multi_notes(4, 80, 800); // buzzer on
   
   voltage = analogRead(PIN_ADC); //adc is on channel 2, must do read before WiFi connects
   mfrc522.PCD_Init();
-  esp_sleep_enable_ext0_wakeup(PIN_PIR, 1);
-
 }
 
 void do_setup()
 {
-  do_wake();
-  WiFi.persistent(false); // turn off persistent, fixing flash crashing issue
-  og.options_setup(); //Need to make sure this doesn't need to be called in every loop or if keeping in RTC enough
-
-  DEBUG_PRINT(F("Complile Info: "));
+  DEBUG_BEGIN(115200);
+  WiFi.mode(WIFI_OFF); // turn off persistent, fixing flash crashing issue
+  og.begin();
+  og.options_setup();
+  curr_mode = og.get_mode();
+  if (curr_mode != OG_MOD_AP) {
+    do_wake();
+    esp_sleep_enable_ext0_wakeup(PIN_PIR, 1);
+  }
+  DEBUG_PRINT(F("Compile Info: "));
   DEBUG_PRINT(F(__DATE__));
   DEBUG_PRINT(F(" "));
   DEBUG_PRINTLN(F(__TIME__));
-  curr_mode = og.get_mode();
+
   //only start a server in AP mode
   if(!server && curr_mode == OG_MOD_AP) {
     server = new WebServer(og.options[OPTION_HTP].ival);
     if(curr_mode == OG_MOD_AP) dns = new DNSServer();
     DEBUG_PRINT(F("server started @ "));
     DEBUG_PRINTLN(og.options[OPTION_HTP].ival);
+    og.set_led(HIGH);
   }
   led_blink_ms = LED_FAST_BLINK;
   DEBUG_PRINTLN("Full setup");
@@ -876,8 +941,6 @@ void process_ui()
         ipString = get_ip();
         ipString.replace(".", ". ");
         report_ip();
-      } else if(curr > button_down_time + 50) {
-        og.click_relay();
       }
       button_down_time = 0;
     }
@@ -937,47 +1000,11 @@ void check_status() {
 
 }
 
-void time_keeping() {
-  static bool configured = false;
-  static ulong prev_millis = 0;
-  static ulong time_keeping_timeout = 0;
-
-  if(!configured) {
-    DEBUG_PRINTLN(F("Set time server"));
-    configTime(0, 0, "time.google.com", "pool.ntp.org", NULL);
-    configured = true;
-  }
-
-  if(!curr_utc_time || (curr_utc_time > time_keeping_timeout)) {
-    ulong gt = time(nullptr);
-    if(gt<978307200L) {
-      // if we didn't get response, re-try after 2 seconds
-      time_keeping_timeout = curr_utc_time + 2;
-    } else {
-      curr_utc_time = gt;
-      curr_utc_hour = (curr_utc_time % 86400)/3600;
-      DEBUG_PRINT(F("Updated time from NTP: "));
-      DEBUG_PRINT(curr_utc_time);
-      DEBUG_PRINT(" Hour: ");
-      DEBUG_PRINTLN(curr_utc_hour);
-      // if we got a response, re-try after TIME_SYNC_TIMEOUT seconds
-      time_keeping_timeout = curr_utc_time + TIME_SYNC_TIMEOUT;
-      prev_millis = millis();
-    }
-  }
-/*   while(millis() - prev_millis >= 1000) {
-    curr_utc_time ++;
-    curr_utc_hour = (curr_utc_time % 86400)/3600;
-    prev_millis += 1000;
-  } */
-}
-
-void do_sleep() {
-  DEBUG_PRINTLN("Entering deepsleep");
-  digitalWrite(PMOS, LOW);
-  adc_power_off();
-  esp_deep_sleep_start();
-}
+/* void reset_localtime() {
+  struct tm local_time;
+  configTzTime(TZ_INFO, NTP_SERVER);
+  getLocalTime(&local_time,2000); 
+} */
 
 void do_loop() {
 
@@ -987,6 +1014,7 @@ void do_loop() {
   switch(og.state) {
   case OG_STATE_INITIAL:
     if(curr_mode == OG_MOD_AP) {
+      led_blink_ms = LED_SLOW_BLINK;
       scanned_ssids = scan_network();
       String ap_ssid = get_ap_ssid();
       start_network_ap(ap_ssid.c_str(), NULL);
@@ -1008,6 +1036,7 @@ void do_loop() {
       og.state = OG_STATE_CONNECTED;
       DEBUG_PRINTLN(WiFi.softAPIP());
       connecting_timeout = 0;
+      
     } else if (og.options[OPTION_ARD].ival == 1) {
       og.state = OG_STATE_START_CONNECT;
     } else {
@@ -1038,7 +1067,7 @@ void do_loop() {
       break;
 
   case OG_STATE_TRY_CONNECT:
-      led_blink_ms = LED_SLOW_BLINK;
+      led_blink_ms = LED_FAST_BLINK;
       DEBUG_PRINT(F("Attempting to connect to SSID: "));
       DEBUG_PRINTLN(og.options[OPTION_SSID].sval.c_str());
       start_network_sta_with_ap(og.options[OPTION_SSID].sval.c_str(), og.options[OPTION_PASS].sval.c_str());
@@ -1064,9 +1093,11 @@ void do_loop() {
         //TODO: Want to actually get into main connected loop here so we can save any readings to logfile
         //og.restart();
         og.play_multi_notes(3,80,260); //some low note indicating error
+        if (cardKey) log_data();
         do_sleep();
       }
     }
+    led_blink_ms = LED_FAST_BLINK;
     break;
 
   case OG_STATE_RESET:
@@ -1083,9 +1114,10 @@ void do_loop() {
     
   case OG_STATE_CONNECTED: //THIS IS THE MAIN LOOP
     if(curr_mode == OG_MOD_AP) {
+      led_blink_ms = LED_SLOW_BLINK;
       dns->processNextRequest();
       server->handleClient();
-      check_status_ap();
+      check_status_ap(); //remove this later
       connecting_timeout = 0;
       if(og.options[OPTION_MOD].ival == OG_MOD_STA) {
         // already in STA mode, waiting to reboot
@@ -1094,6 +1126,8 @@ void do_loop() {
       if(WiFi.status() == WL_CONNECTED && WiFi.localIP()) {
         DEBUG_PRINTLN(F("STA connected, updating option file"));
         sendData(); //newdevice data sent
+        //reset_localtime();
+        time_keeping();
         og.options[OPTION_MOD].ival = OG_MOD_STA;
         og.options_save();
         og.play_multi_notes(2,50,1600);
@@ -1101,10 +1135,10 @@ void do_loop() {
       }
       
     } else {
-      if(WiFi.status() == WL_CONNECTED) {;
+      if(WiFi.status() == WL_CONNECTED) {
         //Don't sleep if we are an admin device, for now
         if (millis() > sleep_timeout && og.options[OPTION_ARD].ival == 0) { do_sleep(); }
-        if (cardKey) { sendData(); sleep_timeout = millis()+5000; } //
+        if (cardKey) { sendData(); sleep_timeout = millis()+5000; } //Have this so we don't have to turn on Wifi till we have  card
         readCard();
         delay(5);
         connecting_timeout = 0;

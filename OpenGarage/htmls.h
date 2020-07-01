@@ -1,6 +1,7 @@
-const char ap_home_html[] PROGMEM = R"(<head>
-  <title>OpenContacts</title>
-  <meta name='viewport' content='width=device-width, initial-scale=1'>
+const char ap_home_html[] PROGMEM = R"(
+<head>
+<title>OpenContacts</title>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
 </head>
 <body>
 <h3>Device MAC address: <p id='mac'></p></h3>
@@ -26,6 +27,7 @@ Information for the room where this device will be installed<br>
   <tr><td><input type='text' name='bldg' id='bldg' style='font-size:14pt;height:28px;'></td><td>Building</td></tr>
   <tr><td><input type='text' name='room' id='room' style='font-size:14pt;height:28px;'></td><td>Room</td></tr>
   <tr><td><input type='int' name='occup' id='occup' style='font-size:14pt;height:28px;'></td><td>Max Occupancy</td></tr>
+  <tr><td><input type='checkbox' name='buzzer' id='buzzer' style='font-size:14pt;height:28px;' checked></td><td>Use Buzzer?</td></tr>
 </table>
 <br>
 <caption><b>Admin Card Reader Setup</b></caption><br>
@@ -33,7 +35,7 @@ Check the box and complete the fields if this device will be used for assigning 
 <table cellspacing=16>
   <tr><td><input type='checkbox' name='admin_read' id='admin_read' style='font-size:14pt;height:28px;'></td><td>Admin Device?</td></tr>
   <tr><td><input type='text' name='admin_name' id='admin_name' style='font-size:14pt;height:28px;'></td><td>Device Name (if using more than one, record the name on the device)</td></tr>
-  <tr><td><input type='text' name='admin_api' id='admin_api' style='font-size:14pt;height:28px;'></td><td>API Key (internal use only)</td></tr>
+  <tr><td><input type='hidden' name='admin_api' id='admin_api' style='font-size:14pt;height:28px;'></td><td></td></tr>
   <tr><td><button type='button' id='butt' onclick='sf();' style='height:36px;width:180px'>Submit</button></td><td></td></tr>
 </table>
 <script>
@@ -106,6 +108,7 @@ function sf() {
          '&bldg='+encodeURIComponent(id('bldg').value)+
          '&room='+encodeURIComponent(id('room').value)+
          '&occup='+encodeURIComponent(id('occup').value)+
+         '&buzzer='+get_check('buzzer')+
          '&admin_read='+get_check('admin_read')+
          '&admin_name='+encodeURIComponent(id('admin_name').value)+
          '&admin_api='+encodeURIComponent(id('admin_api').value);

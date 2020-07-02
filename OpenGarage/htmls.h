@@ -140,17 +140,16 @@ setTimeout(loadSSIDs, 1000);
 </body>
 )";
 const char ap_update_html[] PROGMEM = R"(<head>
-<title>OpenGarage</title>
+<title>OpenContacts Update</title>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 </head>
 <body>
 <div id='page_update'>
-<div><h3>OpenGarage AP-mode Firmware Update</h3></div>
+<div><h3>OpenContacts AP-mode Firmware Update</h3></div>
 <div>
 <form method='POST' action='/update' id='fm' enctype='multipart/form-data'>
 <table cellspacing=4>
 <tr><td><input type='file' name='file' accept='.bin' id='file'></td></tr>
-<tr><td><b>Device key: </b><input type='password' name='dkey' size=16 maxlength=16 id='dkey'></td></tr>
 <tr><td><label id='msg'></label></td></tr>
 </table>
 <button id='btn_submit' style='height:48px;'>Submit</a>
@@ -168,14 +167,10 @@ id('btn_submit').addEventListener('click', function(e){
 e.preventDefault();
 var files= id('file').files;
 if(files.length==0) {show_msg('Please select a file.',2000,'red'); return;}
-if(id('dkey').value=='') {
-if(!confirm('You did not input a device key. Are you sure?')) return;
-}
 show_msg('Uploading. Please wait...',10000,'green');
 var fd = new FormData();
 var file = files[0];
 fd.append('file', file, file.name);
-fd.append('dkey', id('dkey').value);
 var xhr = new XMLHttpRequest();
 xhr.onreadystatechange = function() {
 if(xhr.readyState==4 && xhr.status==200) {

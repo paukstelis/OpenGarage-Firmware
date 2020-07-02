@@ -20,14 +20,7 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#if defined(SERIAL_DEBUG)
-  #define BLYNK_DEBUG
-  #define BLYNK_PRINT Serial
-#endif
-
-/* #include <BlynkSimpleEsp8266.h> */
 #include <DNSServer.h>
-/* #include <PubSubClient.h> //https://github.com/Imroy/pubsubclient */
 
 #include "pitches.h"
 #include "OpenGarage.h"
@@ -46,16 +39,12 @@ OpenGarage og;
 WebServer *server = NULL;
 DNSServer *dns = NULL;
 
-/* WidgetLED blynk_door(BLYNK_PIN_DOOR);
-WidgetLED blynk_car(BLYNK_PIN_CAR); */
-
 static Ticker led_ticker;
 static Ticker aux_ticker;
 static Ticker ip_ticker;
 static Ticker restart_ticker;
 
 static WiFiClient wificlient;
-/* PubSubClient mqttclient(wificlient); */
 
 static String scanned_ssids;
 static byte read_cnt = 0;
@@ -68,17 +57,12 @@ static float tempC = 0;
 static float humid = 0;
 static byte door_status = 0; //0 down, 1 up
 static int vehicle_status = 0; //0 No, 1 Yes, 2 Unknown (door open), 3 Option Disabled
-static bool curr_cloud_access_en = false;
 static uint led_blink_ms = LED_FAST_BLINK;
 static ulong justopen_timestamp = 0;
 static byte curr_mode;
-// this is one byte storing the door status histogram
-// maximum 8 bits
-static byte door_status_hist = 0;
 static ulong curr_utc_time = 0;
 static ulong curr_utc_hour= 0;
 static HTTPClient http;
-//RTC_DATA_ATTR static struct tm local_time;
 void do_setup();
 void do_wake();
 void reset_localtime();
@@ -198,46 +182,6 @@ bool get_value_by_key(const char *command, const char *key, String& val) {
   }
 }
 
-String ipString;
-
-void report_ip() {
-  static uint notes[] = {NOTE_C4, NOTE_CS4, NOTE_D4, NOTE_DS4, NOTE_E4, NOTE_F4, NOTE_FS4, NOTE_G4, NOTE_GS4, NOTE_A4};
-  static byte note = 0;
-  static byte digit = 0;
-
-  if(digit == ipString.length()) { // play ending note
-    og.play_note(NOTE_C6); digit++; note=0;
-    ip_ticker.once_ms(1000, report_ip);
-    return;
-  } else if(digit == ipString.length()+1) { // end
-    og.play_note(0); note=0; digit=0;
-    return;
-  }
-  char c = ipString.charAt(digit);
-  if (c==' ') {
-    og.play_note(0); digit++; note=0;
-    ip_ticker.once_ms(1000, report_ip);
-  } else if (c=='.') {
-    og.play_note(NOTE_C5);
-    digit++; note=0;
-    ip_ticker.once_ms(500, report_ip);
-  } else if (c>='0' && c<='9') {
-    byte idx=9; // '0' maps to index 9;
-    if(c>='1') idx=c-'1';
-    if(note==idx+1) {
-      og.play_note(0); note++;
-      ip_ticker.once_ms(1000, report_ip);
-    } else if(note==idx+2) {
-      digit++; note=0;
-      ip_ticker.once_ms(100, report_ip);
-    } else {
-      og.play_note(notes[note]);
-      note++;
-      ip_ticker.once_ms(500, report_ip);
-    }
-  }
-}
-
 void restart_in(uint32_t ms) {
   if(og.state != OG_STATE_WAIT_RESTART) {
     og.state = OG_STATE_WAIT_RESTART;
@@ -253,16 +197,6 @@ void on_home()
   } else {
     server_send_html_P(sta_home_html);
   }
-}
-
-void on_sta_view_options() {
-  if(curr_mode == OG_MOD_AP) return;
-  server_send_html_P(sta_options_html);
-}
-
-void on_sta_view_logs() {
-  if(curr_mode == OG_MOD_AP) return;
-  server_send_html_P(sta_logs_html);
 }
 
 char dec2hexchar(byte dec) {
@@ -312,120 +246,7 @@ String get_ip() {
   return ip;
 }
 
-void sta_controller_fill_json(String& json) {
-  json = "";
-  json += F("{\"dist\":");
-  json += distance;
-  json += F(",\"door\":");
-  json += door_status;
-  json += F(",\"vehicle\":");
-  json += vehicle_status;
-  json += F(",\"rcnt\":");
-  json += read_cnt;
-  json += F(",\"fwv\":");
-  json += og.options[OPTION_FWV].ival;
-  json += F(",\"name\":\"");
-  json += og.options[OPTION_NAME].sval;
-  json += F("\",\"mac\":\"");
-  json += get_mac();
-  json += F("\",\"cid\":");
-  json += ESP.getChipRevision();
-  json += F(",\"rssi\":");
-  json += (int16_t)WiFi.RSSI();
-  if(og.options[OPTION_TSN].ival) {
-  	json += F(",\"temp\":");
-  	json += tempC;
-  	json += F(",\"humid\":");
-  	json += humid;
-  }
-  json += F("}");
-}
-
-void on_sta_controller() {
-  if(curr_mode == OG_MOD_AP) return;
-  String json;
-  sta_controller_fill_json(json);
-  server_send_json(json);
-}
-
-void on_sta_debug() {
-  String json = "";
-  json += F("{");
-  json += F("\"rcnt\":");
-  json += read_cnt;
-  json += F(",\"fwv\":");
-  json += og.options[OPTION_FWV].ival;
-  json += F(",\"name\":\"");
-  json += og.options[OPTION_NAME].sval;
-  json += F("\",\"mac\":\"");
-  json += get_mac();
-  json += F("\",\"cid\":");
-  json += ESP.getChipRevision();
-  json += F(",\"rssi\":");
-  json += (int16_t)WiFi.RSSI();
-  json += F(",\"bssid\":\"");
-  json += WiFi.BSSIDstr();
-  json += F("\",\"build\":\"");
-  json += (F(__DATE__));
-  json += F("\",\"Freeheap\":");
-  json += (uint16_t)ESP.getFreeHeap();
-  json += F("}");
-  server_send_json(json);
-}
-
-void sta_logs_fill_json(String& json) {
- /*  json = "";
-  json += F("{\"name\":\"");
-  json += og.options[OPTION_NAME].sval;
-  json += F("\",\"time\":");
-  json += curr_utc_time;
-  json += F(",\"logs\":[");
-  if(!og.read_log_start()) {
-    json += F("]}");
-    server_send_json(json);
-    return;
-  }
-  LogStruct l;
-  for(uint i=0;i<og.options[OPTION_LSZ].ival;i++) {
-    if(!og.read_log_next(l)) break;
-    if(!l.tstamp) continue;
-    json += F("[");
-    json += l.tstamp;
-    json += F(",");
-    json += l.status;
-    json += F(",");
-    json += l.dist;
-    json += F("],");
-  }
-  og.read_log_end();
-  json.remove(json.length()-1); // remove the extra ,
-  json += F("]}"); */
-}
-
-void on_sta_logs() {
-  if(curr_mode == OG_MOD_AP) return;
-  String json;
-  sta_logs_fill_json(json);
-  server_send_json(json);
-}
-
-bool verify_device_key() {
-  if(server->hasArg("dkey") && (server->arg("dkey") == og.options[OPTION_DKEY].sval))
-    return true;
-  return false;
-}
-
-bool verify_device_key(const char* command) {
-  if(command) return true;
-  else return verify_device_key();
-}
-
 void on_reset_all(){
-/*   if(!verify_device_key()) {
-    server_send_result(HTML_UNAUTHORIZED);
-    return;
-  }
- */
   og.state = OG_STATE_RESET;
   server_send_result(HTML_SUCCESS);
 }
@@ -437,10 +258,6 @@ void log_data() {
     l.card_uid = cardKey;
     l.voltage = voltage;
     og.write_log(l);
-}
-
-void send_log_data() {
-
 }
 
 void on_clear_log() {
@@ -526,270 +343,12 @@ void sendData() {
 
 }
 void time_keeping() {
-  static bool configured = false;
   static ulong prev_millis = 0;
   static ulong time_keeping_timeout = 0;
-
-  if(!configured) {
-    DEBUG_PRINTLN(F("Set time server"));
-    configTime(0, 0, "216.239.35.8", "66.228.48.38", NULL);
-    configured = true;
-  }
-/* 
-  if(!curr_utc_time || (curr_utc_time > time_keeping_timeout)) {
-    ulong gt = time(nullptr);
-    if(gt<978307200L) {
-      // if we didn't get response, re-try after 2 seconds
-      time_keeping_timeout = curr_utc_time + 2;
-    } else {
-      curr_utc_time = gt;
-      curr_utc_hour = (curr_utc_time % 86400)/3600;
-      DEBUG_PRINT(F("Updated time from NTP: "));
-      DEBUG_PRINT(curr_utc_time);
-      DEBUG_PRINT(" Hour: ");
-      DEBUG_PRINTLN(curr_utc_hour);
-      // if we got a response, re-try after TIME_SYNC_TIMEOUT seconds
-      //time_keeping_timeout = curr_utc_time + TIME_SYNC_TIMEOUT;
-      prev_millis = millis();
-    }
-  }
-  while(millis() - prev_millis >= 1000) {
-    curr_utc_time ++;
-    curr_utc_hour = (curr_utc_time % 86400)/3600;
-    prev_millis += 1000;
-  } */
-}
-/* 
-void sta_change_controller_main(const char *command) {
-  if(curr_mode == OG_MOD_AP) return;
-
-  if(!verify_device_key(command)) {
-    server_send_result(command, HTML_UNAUTHORIZED);
-    return;
-  }
-
-  if(findArg(command, "click") || findArg(command, "close") || findArg(command, "open")) {
-    DEBUG_PRINTLN(F("Received button request (click, close, or open)"));
-    server_send_result(command, HTML_SUCCESS);
-    //1 is open
-    if ((findArg(command, "close") && door_status) ||
-        (findArg(command, "open") && !door_status) ||
-        (findArg(command, "click"))) {
-      DEBUG_PRINTLN(F("Valid command recieved based on door status"));
-      if(!og.options[OPTION_ALM].ival) {
-        // if alarm is not enabled, trigger relay right away
-        og.click_relay();
-      } else if(og.options[OPTION_AOO].ival && !door_status) {
-      	// if 'Do not alarm on open' is on, and door is about to be open, no alarm needed
-      	og.click_relay();
-      } else {
-        // else, set alarm
-        og.set_alarm();
-      }
-    }else{
-      DEBUG_PRINTLN(F("Command request not valid, door already in requested state"));
-    }
-  } else if(findArg(command, "reboot")) {
-    server_send_result(command, HTML_SUCCESS);
-    //restart_ticker.once_ms(1000, og.restart);
-    restart_in(1000);
-  } else if(findArg(command, "apmode")) {
-    server_send_result(command, HTML_SUCCESS);
-    og.reset_to_ap();
-  } else {
-    server_send_result(command, HTML_NOT_PERMITTED);
-  }
-
+  DEBUG_PRINTLN(F("Set time server"));
+  configTime(0, 0, "216.239.35.8", "66.228.48.38", NULL);
 }
 
- 
-void on_sta_change_controller() {
-  sta_change_controller_main(NULL);  
-}
-
-void sta_change_options_main(const char *command) {
-  if(curr_mode == OG_MOD_AP) return;
-
-  if(!verify_device_key(command)) {
-    server_send_result(command, HTML_UNAUTHORIZED);
-    return;
-  }
-
-  uint ival = 0;
-  String sval;
-  byte i;
-  OptionStruct *o = og.options;
-  
-  byte usi = 0;
-  // FIRST ROUND: check option validity
-  // do not save option values yet
-  for(i=0;i<NUM_OPTIONS;i++,o++) {
-    const char *key = o->name.c_str();
-    // these options cannot be modified here
-    if(i==OPTION_FWV || i==OPTION_MOD  || i==OPTION_SSID ||
-      i==OPTION_PASS || i==OPTION_DKEY)
-      continue;
-    
-    if(o->max) {  // integer options
-      if(get_value_by_key(command, key, ival)) {
-        if(ival>o->max) {	// check max limit
-          server_send_result(command, HTML_DATA_OUTOFBOUND, key);
-          return;
-        }
-        // check min limit
-        if(i==OPTION_DRI && ival < 50) {
-        	server_send_result(command,HTML_DATA_OUTOFBOUND, key);
-        	return;
-        }
-        if(i==OPTION_LSZ && ival < 20) {
-          // minimal log size is 20
-          server_send_result(command, HTML_DATA_OUTOFBOUND, key);
-          return;
-        }
-        if(i==OPTION_CDT && ival < 50) {
-          // click delay time should be at least 50 ms
-          server_send_result(command, HTML_DATA_OUTOFBOUND, key);
-          return;
-        }
-        if(i==OPTION_USI && ival==1) {
-          // mark device IP and gateway IP change
-          usi = 1;
-        }
-      }
-    }
-  }
-  
-  // Check device IP and gateway IP changes
-  String dvip, gwip, subn, dns1;
-  const char* _dvip = "dvip";
-  const char* _gwip = "gwip";
-  const char* _subn = "subn";
-  const char* _dns1 = "dns1";
-  if(usi) {
-    if(get_value_by_key(command, _dvip, dvip)) {
-      if(get_value_by_key(command, _gwip, gwip)) {
-        // check validity of IP address
-        IPAddress ip;
-        if(!ip.fromString(dvip)) {server_send_result(command, HTML_DATA_FORMATERROR, _dvip); return;}
-        if(!ip.fromString(gwip)) {server_send_result(command, HTML_DATA_FORMATERROR, _gwip); return;}
-        if(get_value_by_key(command, _subn, subn)) {
-          if(!ip.fromString(subn)) {
-            server_send_result(command, HTML_DATA_FORMATERROR, _subn);
-            return;
-          }
-        }
-        if(get_value_by_key(command, _dns1, dns1)) {
-        	if(!ip.fromString(dns1)) {
-            server_send_result(command, HTML_DATA_FORMATERROR, _dns1);
-            return;
-        	}
-        }
-      } else {
-        server_send_result(command, HTML_DATA_MISSING, _gwip);
-        return;
-      }              
-    } else {
-      server_send_result(command, HTML_DATA_MISSING, _dvip);
-      return;
-    }
-  }
-  // Check device key change
-  String nkey, ckey;
-  const char* _nkey = "nkey";
-  const char* _ckey = "ckey";
-  
-  if(get_value_by_key(command, _nkey, nkey)) {
-    if(get_value_by_key(command, _ckey, ckey)) {
-      if(!nkey.equals(ckey)) {
-        server_send_result(command, HTML_MISMATCH, _ckey);
-        return;
-      }
-    } else {
-      server_send_result(command, HTML_DATA_MISSING, _ckey);
-      return;
-    }
-  }
-  
-  // SECOND ROUND: change option values
-  o = og.options;
-  for(i=0;i<NUM_OPTIONS;i++,o++) {
-    const char *key = o->name.c_str();
-    // these options cannot be modified here
-    if(i==OPTION_FWV || i==OPTION_MOD  || i==OPTION_SSID ||
-      i==OPTION_PASS || i==OPTION_DKEY)
-      continue;
-    
-    if(o->max) {  // integer options
-      if(get_value_by_key(command, key, ival)) {
-        o->ival = ival;
-      }
-    } else {
-      if(get_value_by_key(command, key, sval)) {
-        o->sval = sval;
-      }
-    }
-  }
-
-  if(usi) {
-    get_value_by_key(command, _dvip, dvip);
-    get_value_by_key(command, _gwip, gwip);
-    og.options[OPTION_DVIP].sval = dvip;
-    og.options[OPTION_GWIP].sval = gwip;
-    if(get_value_by_key(command, _subn, subn)) {
-      og.options[OPTION_SUBN].sval = subn;
-    }
-    if(get_value_by_key(command, _dns1, dns1)) {
-    	og.options[OPTION_DNS1].sval = dns1;
-    }
-  }
-  
-  if(get_value_by_key(command, _nkey, nkey)) {
-      og.options[OPTION_DKEY].sval = nkey;
-  }
-
-  og.options_save();
-  server_send_result(command, HTML_SUCCESS);
-}
-
-void on_sta_change_options() {
-  sta_change_options_main(NULL);
-}
-
-void sta_options_fill_json(String& json) {
-  json = "{";
-  OptionStruct *o = og.options;
-  for(byte i=0;i<NUM_OPTIONS;i++,o++) {
-    if(!o->max) {
-      if(i==OPTION_PASS || i==OPTION_DKEY) { // do not output password or device key
-        continue;
-      } else {
-        json += F("\"");
-        json += o->name;
-        json += F("\":");
-        json += F("\"");
-        json += o->sval;
-        json += F("\"");
-        json += ",";
-      }
-    } else {  // if this is a int option
-      json += F("\"");
-      json += o->name;
-      json += F("\":");
-      json += o->ival;
-      json += ",";
-    }
-  }
-  json.remove(json.length()-1); // remove the extra ,
-  json += F("}");
-}
-
-void on_sta_options() {
-  if(curr_mode == OG_MOD_AP) return;
-  String json;
-  sta_options_fill_json(json);
-  server_send_json(json);
-}
-*/
 void on_ap_scan() {
   if(curr_mode == OG_MOD_STA) return;
   server_send_json(scanned_ssids);
@@ -836,14 +395,7 @@ void on_ap_try_connect() {
   json += F("}");
   server_send_json(json);
   if(WiFi.status() == WL_CONNECTED && WiFi.localIP()) {
-    /*DEBUG_PRINTLN(F("STA connected, updating option file"));
-    og.options[OPTION_MOD].ival = OG_MOD_STA;
-    if(og.options[OPTION_AUTH].sval.length() == 32) {
-      og.options[OPTION_ACC].ival = OG_ACC_BOTH;
-    }
-    og.options_save();*/
     DEBUG_PRINTLN(F("IP received by client, restart."));
-    //restart_ticker.once_ms(1000, og.restart); // restart once client receives IP address
     restart_in(1000);
   }
 }
@@ -851,8 +403,6 @@ void on_ap_try_connect() {
 void on_ap_debug() {
   String json = "";
   json += F("{");
-  /* json += F("\"dist\":");
-  json += og.read_distance(); */
   json += F(",\"fwv\":");
   json += og.options[OPTION_FWV].ival;
   json += F("}");
@@ -863,21 +413,17 @@ void do_sleep() {
   DEBUG_PRINTLN("Entering deepsleep");
   digitalWrite(PMOS, HIGH);
   if(WiFi.status() == WL_CONNECTED) {
-    //reset_localtime();
+    //reset time
     time_keeping();
   }
   adc_power_off();
   esp_deep_sleep_start();
 }
 
-/* Minimal call after deepsleep */
 void do_wake() {
   digitalWrite(PMOS, LOW);
   SPI.begin();
-  
-  //buzz
   og.play_multi_notes(4, 80, 800); // buzzer on
-  
   voltage = analogRead(PIN_ADC); //adc is on channel 2, must do read before WiFi connects
   mfrc522.PCD_Init();
 }
@@ -936,12 +482,7 @@ void process_ui()
         og.state = OG_STATE_RESET;
       } else if(curr > button_down_time + BUTTON_APRESET_TIMEOUT) {
         og.reset_to_ap();
-      } else if(curr > button_down_time + BUTTON_REPORTIP_TIMEOUT) {        
-        // report IP
-        ipString = get_ip();
-        ipString.replace(".", ". ");
-        report_ip();
-      }
+      } 
       button_down_time = 0;
     }
   }
@@ -996,16 +537,6 @@ void check_status_ap() {
   }
 }
 
-void check_status() {
-
-}
-
-/* void reset_localtime() {
-  struct tm local_time;
-  configTzTime(TZ_INFO, NTP_SERVER);
-  getLocalTime(&local_time,2000); 
-} */
-
 void do_loop() {
 
   static ulong connecting_timeout;
@@ -1045,6 +576,7 @@ void do_loop() {
     }
     break;
 
+  //non-Wifi connected mode with RFID reader active
   case OG_STATE_RFID:
       if(readCard()) {
         og.state=OG_STATE_START_CONNECT;
@@ -1061,7 +593,7 @@ void do_loop() {
       DEBUG_PRINTLN(og.options[OPTION_SSID].sval.c_str());
       WiFi.mode(WIFI_STA);
       start_network_sta(og.options[OPTION_SSID].sval.c_str(), og.options[OPTION_PASS].sval.c_str());
-      og.config_ip();
+      //og.config_ip();
       og.state = OG_STATE_CONNECTING;
       connecting_timeout = millis() + 10000;
       break;
@@ -1071,7 +603,7 @@ void do_loop() {
       DEBUG_PRINT(F("Attempting to connect to SSID: "));
       DEBUG_PRINTLN(og.options[OPTION_SSID].sval.c_str());
       start_network_sta_with_ap(og.options[OPTION_SSID].sval.c_str(), og.options[OPTION_PASS].sval.c_str());
-      og.config_ip();
+      //og.config_ip();
       og.state = OG_STATE_CONNECTED;
       break;
     
@@ -1080,8 +612,6 @@ void do_loop() {
     if(WiFi.status() == WL_CONNECTED) {
       DEBUG_PRINT(F("Wireless connected, IP: "));
       DEBUG_PRINTLN(WiFi.localIP());
-      //sendData(); //login the activation
-
       led_blink_ms = 0;
       og.set_led(HIGH);
       og.state = OG_STATE_CONNECTED;
@@ -1126,7 +656,6 @@ void do_loop() {
       if(WiFi.status() == WL_CONNECTED && WiFi.localIP()) {
         DEBUG_PRINTLN(F("STA connected, updating option file"));
         sendData(); //newdevice data sent
-        //reset_localtime();
         time_keeping();
         og.options[OPTION_MOD].ival = OG_MOD_STA;
         og.options_save();

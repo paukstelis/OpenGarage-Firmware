@@ -112,37 +112,12 @@ enum {
 
 typedef enum {
   OPTION_FWV = 0, // firmware version
-  OPTION_MNT,     // mount type
-  OPTION_DTH,     // distance threshold door
-  OPTION_VTH,     // distance threshold vehicle detection
-  OPTION_RIV,     // read interval
-  OPTION_ALM,     // alarm mode
-  OPTION_AOO,			// no alarm on opening
   OPTION_LSZ,     // log size
-  OPTION_TSN,     // temperature sensor type
   OPTION_HTP,     // http port
-  OPTION_CDT,     // click delay time
-  OPTION_DRI,			// distance read interval
-  OPTION_STO,			// sensor timeout option
   OPTION_MOD,     // mode
-  OPTION_ATI,     // automation interval (in minutes)
-  OPTION_ATO,     // automation options
-  OPTION_ATIB,    // automation interval B (in hours)
-  OPTION_ATOB,    // automation options B
-  OPTION_NOTO,    // notification options
-  OPTION_USI,     // use static IP
   OPTION_SSID,    // wifi ssid
   OPTION_PASS,    // wifi password
-  OPTION_AUTH,    // Blynk authentication token
-  OPTION_BDMN,    // Blynk Domain
-  OPTION_BPRT,    // Blynk Port
-  OPTION_DKEY,    // device key
   OPTION_NAME,    // device name
-  OPTION_IFTT,    // IFTTT token
-  OPTION_MQTT,    // MQTT IP
-  OPTION_DVIP,    // device IP
-  OPTION_GWIP,    // gateway IP
-  OPTION_SUBN,    // subnet
   OPTION_DNS1,		// dns1 IP
   OPTION_ANAM,    // admin_name
   OPTION_URL,     // url
@@ -168,9 +143,6 @@ typedef enum {
 #define TIME_SYNC_TIMEOUT  1800 //Issues connecting to MQTT can throw off the time function, sync more often
 
 #define TMP_BUFFER_SIZE 100
-
-#define NTP_SERVER "us.pool.ntp.org"
-#define TZ_INFO "MST7MDT6,M3.2.0/02:00:00,M11.1.0/02:00:00" // Americas/Denver
 
 /** Serial debug functions */
 #define SERIAL_DEBUG

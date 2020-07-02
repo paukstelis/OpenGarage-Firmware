@@ -39,37 +39,12 @@ extern OpenGarage og;
  */
 OptionStruct OpenGarage::options[] = {
   {"fwv", OG_FWV,      255, ""},
-  {"mnt", OG_MNT_CEILING,3, ""},
-  {"dth", 50,        65535, ""},
-  {"vth", 150,       65535, ""},
-  {"riv", 5,           300, ""},
-  {"alm", OG_ALM_5,      2, ""},
-  {"aoo", 0,             1, ""},
   {"lsz", DEFAULT_LOG_SIZE,400,""},
-  {"tsn", OG_TSN_NONE, 255, ""},
   {"htp", 80,        65535, ""},
-  {"cdt", 1000,       5000, ""},
-  {"dri", 500,        3000, ""},
-  {"sto", 0,             1, ""},
   {"mod", OG_MOD_AP,   255, ""},
-  {"ati", 30,          720, ""},
-  {"ato", OG_AUTO_NONE,255, ""},
-  {"atib", 3,           24, ""},
-  {"atob", OG_AUTO_NONE,255, ""},
-  {"noto", OG_NOTIFY_DO|OG_NOTIFY_DC,255, ""},
-  {"usi", 0,             1, ""},
   {"ssid", 0, 0, ""},  // string options have 0 max value
   {"pass", 0, 0, ""},
-  {"auth", 0, 0, ""},
-  {"bdmn", 0, 0, "blynk-cloud.com"},
-  {"bprt", 80,65535, ""},
-  {"dkey", 0, 0, DEFAULT_DKEY},
   {"name", 0, 0, DEFAULT_NAME},
-  {"iftt", 0, 0, ""},
-  {"mqtt", 0, 0, "-.-.-.-"},
-  {"dvip", 0, 0, "-.-.-.-"},
-  {"gwip", 0, 0, "-.-.-.-"},
-  {"subn", 0, 0, "255.255.255.0"},
   {"dns1", 0, 0, "8.8.8.8"},
   {"admin_name", 0, 0, DEFAULT_NAME},
   {"url", 0, 0, ""},
@@ -81,14 +56,6 @@ OptionStruct OpenGarage::options[] = {
   {"admin_api", 0, 0, DEFAULT_DKEY} 
 };
 
-/* Variables and functions for handling Ultrasonic Distance sensor */
-#define KAVG 7  // k average
-volatile uint32_t ud_start = 0;
-volatile byte ud_i = 0;
-volatile boolean fullbuffer = false;
-volatile uint32_t ud_buffer[KAVG];
-volatile boolean triggered = false;
-    
 void OpenGarage::begin() {
   digitalWrite(PIN_RESET, HIGH);
   pinMode(PIN_RESET, OUTPUT);
@@ -103,29 +70,10 @@ void OpenGarage::begin() {
   digitalWrite(PIN_RELAY, LOW);
   pinMode(PIN_RELAY, OUTPUT);
 
-   // detect LED logic
   pinMode(PIN_LED, INPUT);
-  // use median filtering to detect led logic
-  /* byte nl=0, nh=0;
-  for(byte i=0;i<KAVG;i++) {
-    if(digitalRead(PIN_LED)==HIGH) nh++;
-    else nl++;
-    delay(50);
-  }
-  if(nh>nl) { // if we get more HIGH readings
-    led_reverse = 1;  // if no external LED connected, reverse logic
-    //Serial.println(F("reverse logic"));
-  } else {
-    //Serial.println(F("normal logic"));
-  }  */
-
   pinMode(PIN_LED, OUTPUT);
   set_led(LOW);
   
-/*   digitalWrite(PIN_TRIG, HIGH);
-  pinMode(PIN_TRIG, OUTPUT);
-  
-  pinMode(PIN_ECHO, INPUT); */
   pinMode(PIN_BUTTON, INPUT_PULLUP);
 
   pinMode(PMOS, OUTPUT);
@@ -231,13 +179,6 @@ void OpenGarage::options_save() {
   set_dirty_bit(DIRTY_BIT_JO, 1);
 }
 
-/* bool OpenGarage::get_cloud_access_en() {
-  if(options[OPTION_AUTH].sval.length()==32) {
-    return true;
-  }
-  return false;
-} */
-
 void OpenGarage::write_log(const LogStruct& data) {
   File file;
   uint curr = 0;
@@ -319,17 +260,6 @@ void OpenGarage::play_multi_notes(uint number, uint del, uint freq) {
   }
 }
 
-void OpenGarage::config_ip() {
-  if(options[OPTION_USI].ival) {
-    IPAddress dvip, gwip, subn, dns1;
-    if(dvip.fromString(options[OPTION_DVIP].sval) &&
-       gwip.fromString(options[OPTION_GWIP].sval) &&
-       subn.fromString(options[OPTION_SUBN].sval) &&
-       dns1.fromString(options[OPTION_DNS1].sval)) {
-      WiFi.config(dvip, gwip, subn, dns1, gwip);
-    }
-  }
-}
 #include "pitches.h"
 
 void OpenGarage::play_startup_tune() {

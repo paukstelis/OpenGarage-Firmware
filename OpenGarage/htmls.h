@@ -38,6 +38,10 @@ Check the box and complete the fields if this device will be used for assigning 
   <tr><td><input type='hidden' name='admin_api' id='admin_api' style='font-size:14pt;height:28px;'></td><td></td></tr>
   <tr><td><button type='button' id='butt' onclick='sf();' style='height:36px;width:180px'>Submit</button></td><td></td></tr>
 </table>
+<br>
+<a href="/update">Firmware Update</a><br><br>
+<a href="/resetall">Reset All logs/settings</a>
+</body>
 <script>
 function id(s) {return document.getElementById(s);}
 function sel(i) {id('ssid').value=id('rd'+i).value;}

@@ -25,7 +25,7 @@
 #include "pitches.h"
 #include "OpenGarage.h"
 #include "espconnect.h"
-#include "driver/adc.h"
+#include "Update.h"
 //OpenContacts
 #include <MFRC522.h>
 #include <SPI.h>
@@ -43,29 +43,21 @@ static Ticker led_ticker;
 static Ticker aux_ticker;
 static Ticker ip_ticker;
 static Ticker restart_ticker;
-
+RTC_DATA_ATTR time_t now;
 static WiFiClient wificlient;
 
 static String scanned_ssids;
-static byte read_cnt = 0;
-static uint distance = 0;
-static uint vdistance = 0;
 static ulong cardKey = 0;
 static ulong lastKey = 0;
 static uint voltage = 0;
-static float tempC = 0;
-static float humid = 0;
-static byte door_status = 0; //0 down, 1 up
-static int vehicle_status = 0; //0 No, 1 Yes, 2 Unknown (door open), 3 Option Disabled
 static uint led_blink_ms = LED_FAST_BLINK;
-static ulong justopen_timestamp = 0;
 static byte curr_mode;
 static ulong curr_utc_time = 0;
 static ulong curr_utc_hour= 0;
 static HTTPClient http;
+static bool send_logs = false;
 void do_setup();
 void do_wake();
-void reset_localtime();
 
 byte findKeyVal (const char *str, const char *key, char *strbuf=NULL, uint8_t maxlen=0) {
   uint8_t found=0;
@@ -251,13 +243,29 @@ void on_reset_all(){
   server_send_result(HTML_SUCCESS);
 }
 
+void debug_log() {
+  LogStruct l;
+  if (og.read_log_start()) {
+    for(uint i=0;i<og.options[OPTION_LSZ].ival;i++) {
+      if(!og.read_log_next(l)) break;
+      if(!l.tstamp) continue;
+      DEBUG_PRINTLN(l.tstamp);
+    }
+  og.read_log_end();
+  }
+}
+
 void log_data() {
     LogStruct l;
-    time_t tnow = time(nullptr);
-    l.tstamp = tnow;
+    l.tstamp = time(nullptr);
     l.card_uid = cardKey;
     l.voltage = voltage;
     og.write_log(l);
+    DEBUG_PRINTLN("Log written");
+    DEBUG_PRINTLN(l.tstamp);
+    DEBUG_PRINTLN(l.card_uid);
+    DEBUG_PRINTLN(l.voltage);
+    debug_log();
 }
 
 void on_clear_log() {
@@ -291,13 +299,35 @@ bool readCard() {
   return true;
 }
 
+void sendLog() {
+  static String record = "/php/record.php";
+  String html_url, html_content;
+  static HTTPClient http;
+  struct LogStruct l;
+  html_url = og.options[OPTION_URL].sval+record;
+  if (og.read_log_start()) {
+    http.begin(html_url);
+    for(uint i=0;i<og.options[OPTION_LSZ].ival;i++) {
+      if(!og.read_log_next(l)) break;
+      if(!l.tstamp) continue;
+      html_content = "uid="+String(l.tstamp)+"&mac="+get_mac()+"&voltage="+String(l.voltage)+"&time="+String(l.tstamp);
+      http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+      DEBUG_PRINTLN(html_content);
+      int httpCode = http.POST(html_content);
+    }
+    http.end();
+  }
+  og.read_log_end();
+  og.log_reset();
+  send_logs = false;
+}
+
 void sendData() {
   static String newdevice = "/php/newdevice.php";
   static String report = "/php/report.php";
   static String record = "/php/record.php";
   String html_url, html_content;
   static HTTPClient http;
-  LogStruct l;
 
   if (og.get_mode() == OG_MOD_AP) {
     html_url = og.options[OPTION_URL].sval+newdevice;
@@ -308,7 +338,7 @@ void sendData() {
     DEBUG_PRINTLN("Sending new device information...");
   
   }
-  if (og.options[OPTION_ARD].ival == 1 && cardKey) {
+  else if (og.options[OPTION_ARD].ival == 1 && cardKey) {
     html_url = og.options[OPTION_URL].sval+report;
     html_content = "uid="+String(cardKey)+"&api="+og.options[OPTION_AAPI].sval+"&name="+og.options[OPTION_ANAM].sval+
                    "&mac="+get_mac();
@@ -331,6 +361,7 @@ void sendData() {
     og.play_multi_notes(1,80, 400);
     og.play_multi_notes(1,80, 900);
     og.play_multi_notes(1,80,1800);
+    send_logs = true;  
   }
   else {
     //log item
@@ -343,10 +374,10 @@ void sendData() {
 
 }
 void time_keeping() {
-  static ulong prev_millis = 0;
-  static ulong time_keeping_timeout = 0;
+  struct tm now;
   DEBUG_PRINTLN(F("Set time server"));
-  configTime(0, 0, "216.239.35.8", "66.228.48.38", NULL);
+  configTime(0, 0, "time1.google.com", "pool.ntp.org", NULL);
+  DEBUG_PRINTLN(getLocalTime(&now));
 }
 
 void on_ap_scan() {
@@ -415,6 +446,7 @@ void do_sleep() {
   if(WiFi.status() == WL_CONNECTED) {
     //reset time
     time_keeping();
+    DEBUG_PRINTLN(time(nullptr));
   }
   adc_power_off();
   esp_deep_sleep_start();
@@ -453,7 +485,6 @@ void do_setup()
     og.set_led(HIGH);
   }
   led_blink_ms = LED_FAST_BLINK;
-  DEBUG_PRINTLN("Full setup");
   
 }
 
@@ -501,10 +532,20 @@ void on_ap_update() {
   server_send_html_P(ap_update_html);
 }
 
-void on_ap_upload_fin() { }
+void on_ap_upload_fin() {
+  // finish update and check error
+  if(!Update.end(true) || Update.hasError()) {
+    server_send_result(HTML_UPLOAD_FAILED);
+    return;
+  }
+  
+  server_send_result(HTML_SUCCESS);
+  //restart_ticker.once_ms(1000, og.restart);
+  restart_in(1000);
+}
 
 void on_ap_upload() {
- /*  HTTPUpload& upload = server->upload();
+  HTTPUpload& upload = server->upload();
   if(upload.status == UPLOAD_FILE_START){
     Serial.println(F("prepare to upload: "));
     Serial.println(upload.filename);
@@ -526,7 +567,7 @@ void on_ap_upload() {
     Update.end();
     Serial.println(F("upload aborted"));
   }
-  delay(0);   */  
+  delay(0);
 }
 
 void check_status_ap() {
@@ -558,8 +599,8 @@ void do_loop() {
       server->on("/jt", on_ap_try_connect);
       server->on("/db", on_ap_debug);  
       server->on("/gm", on_ap_mac);    
-/*    server->on("/update", HTTP_GET, on_ap_update);
-      server->on("/update", HTTP_POST, on_ap_upload_fin, on_ap_upload); */      
+      server->on("/update", HTTP_GET, on_ap_update);
+      server->on("/update", HTTP_POST, on_ap_upload_fin, on_ap_upload);     
       server->on("/resetall",on_reset_all);
       server->onNotFound(on_home);
       server->begin();
@@ -670,16 +711,17 @@ void do_loop() {
         if (cardKey) { sendData(); sleep_timeout = millis()+5000; } //Have this so we don't have to turn on Wifi till we have  card
         readCard();
         delay(5);
+        if (send_logs) sendLog();
         connecting_timeout = 0;
       } else {
         //og.state = OG_STATE_INITIAL;
         if(!connecting_timeout) {
           DEBUG_PRINTLN(F("State is CONNECTED but WiFi is disconnected, start timeout counter."));
-          connecting_timeout = millis()+60000;
+          connecting_timeout = millis()+10000;
         }
         else if(millis() > connecting_timeout) {
           DEBUG_PRINTLN(F("timeout reached, reboot"));
-          og.restart();
+          do_sleep();
         }
       }
     }

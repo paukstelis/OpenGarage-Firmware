@@ -1,0 +1,10 @@
+{
+  "builtInLibrariesFolders": "/home/paul/arduino-1.8.5/libraries",
+  "customBuildProperties": "build.path=/home/paul/git/OpenGarage-Firmware/build,build.warn_data_percentage=75,runtime.tools.xtensa-esp32-elf-gcc.path=/home/paul/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0,runtime.tools.mkspiffs.path=/home/paul/.arduino15/packages/esp32/tools/mkspiffs/0.2.3,runtime.tools.esptool_py.path=/home/paul/.arduino15/packages/esp32/tools/esptool_py/2.6.1",
+  "fqbn": "esp32:esp32:esp32:PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=460800,DebugLevel=none",
+  "hardwareFolders": "/home/paul/arduino-1.8.5/hardware,/home/paul/.arduino15/packages,/home/paul/Arduino/hardware",
+  "otherLibrariesFolders": "/home/paul/Arduino/libraries",
+  "runtime.ide.version": "10805",
+  "sketchLocation": "/home/paul/git/OpenGarage-Firmware/OpenGarage/OpenGarage.ino",
+  "toolsFolders": "/home/paul/arduino-1.8.5/tools-builder,/home/paul/arduino-1.8.5/hardware/tools/avr,/home/paul/.arduino15/packages"
+}

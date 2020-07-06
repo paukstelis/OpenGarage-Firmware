@@ -59,19 +59,17 @@ OptionStruct OpenGarage::options[] = {
 void OpenGarage::begin() {
   digitalWrite(PIN_RESET, HIGH);
   pinMode(PIN_RESET, OUTPUT);
-  adcAttachPin(PIN_ADC);
-  analogSetAttenuation(ADC_0db);
+  
   ledcSetup(0, 5000, 8);
-
   digitalWrite(PIN_BUZZER, LOW);
   pinMode(PIN_BUZZER, OUTPUT);
   ledcAttachPin(PIN_BUZZER, LEDC_CHANNEL);
 
-  pinMode(PIN_ADC, INPUT);
+  analogSetAttenuation(ADC_0db);
+  adcAttachPin(PIN_ADC);
   digitalWrite(PIN_RELAY, LOW);
   pinMode(PIN_RELAY, OUTPUT);
 
-  pinMode(PIN_LED, INPUT);
   pinMode(PIN_LED, OUTPUT);
   set_led(LOW);
   

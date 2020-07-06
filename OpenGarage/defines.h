@@ -39,7 +39,7 @@
 #define RFSDA_PIN   21
 #define RFRST_PIN   22
 #define PIN_PIR     GPIO_NUM_33
-#define PIN_ADC     A13
+#define PIN_ADC     GPIO_NUM_15
 #define PMOS         5
 
 #define RB 100  // voltage divider bottom and top resistor values (Kohm)

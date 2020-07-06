@@ -39,9 +39,9 @@ OpenGarage og;
 WebServer *server = NULL;
 DNSServer *dns = NULL;
 
-static Ticker led_ticker;
-static Ticker aux_ticker;
-static Ticker ip_ticker;
+//static Ticker led_ticker;
+//static Ticker aux_ticker;
+//static Ticker ip_ticker;
 static Ticker restart_ticker;
 RTC_DATA_ATTR time_t now;
 static WiFiClient wificlient;
@@ -49,8 +49,10 @@ static WiFiClient wificlient;
 static String scanned_ssids;
 static ulong cardKey = 0;
 static ulong lastKey = 0;
-static uint voltage = 0;
+static long voltage = 0;
+static int volt_reads = 0;
 static uint led_blink_ms = LED_FAST_BLINK;
+static uint adc_timeout = 100;
 static byte curr_mode;
 static ulong curr_utc_time = 0;
 static ulong curr_utc_hour= 0;
@@ -284,7 +286,6 @@ bool readCard() {
   cardKey += mfrc522.uid.uidByte[1] << 16;
   cardKey += mfrc522.uid.uidByte[2] <<  8;
   cardKey += mfrc522.uid.uidByte[3];
-  
   mfrc522.PICC_HaltA(); 
   mfrc522.PCD_StopCrypto1();
 
@@ -310,15 +311,16 @@ void sendLog() {
     for(uint i=0;i<og.options[OPTION_LSZ].ival;i++) {
       if(!og.read_log_next(l)) break;
       if(!l.tstamp) continue;
-      html_content = "uid="+String(l.tstamp)+"&mac="+get_mac()+"&voltage="+String(l.voltage)+"&time="+String(l.tstamp);
+      html_content = "uid="+String(l.card_uid)+"&mac="+get_mac()+"&voltage="+String(l.voltage)+"&time="+String(l.tstamp);
       http.addHeader("Content-Type", "application/x-www-form-urlencoded");
       DEBUG_PRINTLN(html_content);
       int httpCode = http.POST(html_content);
     }
     http.end();
+    og.read_log_end();
+    og.log_reset();
   }
-  og.read_log_end();
-  og.log_reset();
+
   send_logs = false;
 }
 
@@ -336,22 +338,16 @@ void sendData() {
                    "&api="+og.options[OPTION_AAPI].sval+"&name="+og.options[OPTION_ANAM].sval+
                    "&occup="+og.options[OPTION_OCCP].ival+"&mac="+get_mac();
     DEBUG_PRINTLN("Sending new device information...");
-  
-  }
-  else if (og.options[OPTION_ARD].ival == 1 && cardKey) {
+  } else if (og.options[OPTION_ARD].ival == 1 && cardKey) {
     html_url = og.options[OPTION_URL].sval+report;
     html_content = "uid="+String(cardKey)+"&api="+og.options[OPTION_AAPI].sval+"&name="+og.options[OPTION_ANAM].sval+
                    "&mac="+get_mac();
     DEBUG_PRINTLN("Sending card information");
-  }
-  else if (cardKey) {
+  } else if (cardKey) {
     html_url = og.options[OPTION_URL].sval+record;
     html_content = "uid="+String(cardKey)+"&mac="+get_mac()+"&voltage="+String(voltage);
     DEBUG_PRINTLN("Sending record data....");
   }
-
-  DEBUG_PRINTLN(html_url);
-  DEBUG_PRINTLN(html_content);
   
   http.begin(html_url);
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -361,9 +357,8 @@ void sendData() {
     og.play_multi_notes(1,80, 400);
     og.play_multi_notes(1,80, 900);
     og.play_multi_notes(1,80,1800);
-    send_logs = true;  
-  }
-  else {
+    send_logs = true; //we know we have connection to server, so send any stored swipes
+  } else {
     //log item
     log_data();
   }
@@ -373,6 +368,7 @@ void sendData() {
   cardKey = 0;
 
 }
+
 void time_keeping() {
   struct tm now;
   DEBUG_PRINTLN(F("Set time server"));
@@ -446,7 +442,6 @@ void do_sleep() {
   if(WiFi.status() == WL_CONNECTED) {
     //reset time
     time_keeping();
-    DEBUG_PRINTLN(time(nullptr));
   }
   adc_power_off();
   esp_deep_sleep_start();
@@ -456,7 +451,7 @@ void do_wake() {
   digitalWrite(PMOS, LOW);
   SPI.begin();
   og.play_multi_notes(4, 80, 800); // buzzer on
-  voltage = analogRead(PIN_ADC); //adc is on channel 2, must do read before WiFi connects
+  volt_reads = 0; //
   mfrc522.PCD_Init();
 }
 
@@ -475,7 +470,6 @@ void do_setup()
   DEBUG_PRINT(F(__DATE__));
   DEBUG_PRINT(F(" "));
   DEBUG_PRINTLN(F(__TIME__));
-
   //only start a server in AP mode
   if(!server && curr_mode == OG_MOD_AP) {
     server = new WebServer(og.options[OPTION_HTP].ival);
@@ -517,15 +511,25 @@ void process_ui()
       button_down_time = 0;
     }
   }
-  // process led
+  // process led and adc
   static ulong led_toggle_timeout = 0;
+  static long voltages = 0;
   if(led_blink_ms) {
     if(millis() > led_toggle_timeout) {
       // toggle led
       og.set_led(1-og.get_led());
       led_toggle_timeout = millis() + led_blink_ms;
+      if(og.state == OG_STATE_RFID && og.get_led()) { //only read with WIFI off
+        int volt = analogRead(PIN_ADC);
+        if (volt) {
+          voltages = voltages + volt;
+          volt_reads++;
+          voltage = ((voltages/volt_reads)/4095.f)*1.1f*(RB+RT)*10;
+          DEBUG_PRINTLN(voltage);
+        }      
+      }
     }
-  }  
+  }
 }
 
 void on_ap_update() {
@@ -541,7 +545,11 @@ void on_ap_upload_fin() {
   
   server_send_result(HTML_SUCCESS);
   //restart_ticker.once_ms(1000, og.restart);
-  restart_in(1000);
+  if (og.options[OPTION_SSID].sval && og.options[OPTION_URL].sval){
+    og.options[OPTION_MOD].ival = OG_MOD_STA;
+    og.options_save();
+  }
+  esp_restart();
 }
 
 void on_ap_upload() {
@@ -660,9 +668,7 @@ void do_loop() {
       sleep_timeout = millis() + 10000;
     } else {
       if(millis() > connecting_timeout) {
-        DEBUG_PRINTLN(F("Wifi Connecting timeout, restart"));
-        //TODO: Want to actually get into main connected loop here so we can save any readings to logfile
-        //og.restart();
+        DEBUG_PRINTLN(F("Wifi Connecting timeout, restart"));;
         og.play_multi_notes(3,80,260); //some low note indicating error
         if (cardKey) log_data();
         do_sleep();
